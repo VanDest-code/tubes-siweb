@@ -11,7 +11,7 @@ export default function LandingPage() {
       <div className="flex flex-col items-center mb-8">
         <div className="relative w-32 h-32 mb-4">
           <Image 
-            src={LogoNadebee} // Pastikan file logo ada di folder /public
+            src={LogoNadebee}
             alt="Nadebee Express Logo"
             fill
             className="object-contain"
