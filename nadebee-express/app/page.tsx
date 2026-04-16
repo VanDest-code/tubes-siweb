@@ -9,7 +9,7 @@ export default function LandingPage() {
       
       {/* 1. Logo Section */}
       <div className="flex flex-col items-center mb-8">
-        <div className="relative w-32 h-32 mb-4">
+        <div className="relative w-56 h-32 mb-4">
           <Image 
             src={LogoNadebee}
             alt="Nadebee Express Logo"
