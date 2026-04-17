@@ -14,7 +14,7 @@ export default function LandingPage() {
             src={LogoNadebee}
             alt="Nadebee Express Logo"
             fill
-            className="object-contain"
+            className="auto object-contain"
             priority
           />
         </div>
@@ -56,7 +56,7 @@ export default function LandingPage() {
 
       {/* 4. CTA Button */}
       <div className="w-full max-w-xs mb-16">
-      <Link href="/auth" className="w-full bg-nadebee-primary hover:bg-green-600 text-white font-bold py-4 px-6 rounded-full flex items-center justify-center transition-all shadow-lg">Mulai Sekarang <span className="ml-2">→</span>
+      <Link href="/auth/login" className="w-full bg-nadebee-primary hover:bg-green-600 text-white font-bold py-4 px-6 rounded-full flex items-center justify-center transition-all shadow-lg">Mulai Sekarang <span className="ml-2">→</span>
         </Link>
       </div>
 
