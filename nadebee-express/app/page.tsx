@@ -14,7 +14,7 @@ export default function LandingPage() {
             src={LogoNadebee}
             alt="Nadebee Express Logo"
             fill
-            className="object-contain"
+            className="auto object-contain"
             priority
           />
         </div>
