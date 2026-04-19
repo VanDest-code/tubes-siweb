@@ -19,7 +19,7 @@ export default function RoleSelection() {
 
       <div className="w-full max-w-sm space-y-4">
         {/* Card Pelanggan */}
-        <Link href="/auth/login/pelanggan" className="block bg-white p-6 rounded-2xl shadow-sm border border-transparent hover:border-nadebee-primary transition-all">
+        <Link href="/pelanggan/home" className="block bg-white p-6 rounded-2xl shadow-sm border border-transparent hover:border-nadebee-primary transition-all">
           <div className="flex items-center gap-4">
             <div className="bg-green-100 p-3 rounded-xl text-nadebee-primary text-xl">👤</div>
             <div>
@@ -30,7 +30,7 @@ export default function RoleSelection() {
         </Link>
 
         {/* Card Kurir */}
-        <Link href="/auth/login/kurir" className="block bg-white p-6 rounded-2xl shadow-sm border border-transparent hover:border-nadebee-primary transition-all">
+        <Link href="/kurir/home" className="block bg-white p-6 rounded-2xl shadow-sm border border-transparent hover:border-nadebee-primary transition-all">
           <div className="flex items-center gap-4">
             <div className="bg-green-100 p-3 rounded-xl text-nadebee-primary text-xl">🚚</div>
             <div>
