@@ -41,7 +41,7 @@ export default function PelangganHomePage() {
         </header>
 
         {/* HERO SECTION */}
-        <section className="flex-1 bg-gradient-to-br from-[#EEF3EE] to-[#F6F6F6] flex flex-col items-center pt-10 px-6 pb-20">
+        <section className="flex-1 bg-linear-to-br from-[#EEF3EE] to-[#F6F6F6] flex flex-col items-center pt-10 px-6 pb-20">
           
           {/* Box Waktu */}
           <div className="w-full max-w-md mb-8 bg-white/50 p-5 rounded-2xl border border-white shadow-sm">

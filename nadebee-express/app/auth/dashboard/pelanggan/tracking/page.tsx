@@ -28,7 +28,7 @@ export default function TrackingPage() {
         </header>
 
         {/* TRACKING CONTENT */}
-        <section className="flex-1 bg-gradient-to-br from-[#EEF3EE] to-[#F6F6F6] p-6 lg:p-10">
+        <section className="flex-1 bg-linear-to-br from-[#EEF3EE] to-[#F6F6F6] p-6 lg:p-10">
           
           {/* Judul Halaman */}
           <div className="mb-8 pt-4">
@@ -67,7 +67,7 @@ export default function TrackingPage() {
             </div>
             
             <h3 className="text-[22px] font-bold text-gray-400 mb-2">Yuk lacak paketmu!</h3>
-            <p className="text-[14px] text-gray-400/80 text-center max-w-[250px] leading-relaxed">
+            <p className="text-[14px] text-gray-400/80 text-center max-w-62.5 leading-relaxed">
               Belum ada aktivitas pencarian. <br/> Masukkan nomor resi di atas.
             </p>
           </div>
