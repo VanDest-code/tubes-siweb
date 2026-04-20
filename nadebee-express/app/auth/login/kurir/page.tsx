@@ -45,7 +45,7 @@ export default function LoginKurir() {
       
       <h1 className="text-lg font-bold mb-8 text-gray-800 uppercase tracking-wide">Masuk sebagai Kurir</h1>
 
-      <form onSubmit={handleLogin} className="w-full max-w-sm bg-white p-8 rounded border border-green-100 shadow-sm space-y-6">
+      <form onSubmit={handleLogin} className="w-full max-w-sm bg-white p-8 rounded-[32px] border-none shadow-xl shadow-green-900/5 space-y-6">
         {/* Input Email */}
         <div>
           <label className="block text-xs font-bold text-gray-700 mb-2">Email</label>
