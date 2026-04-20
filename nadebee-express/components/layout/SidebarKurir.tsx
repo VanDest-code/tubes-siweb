@@ -11,10 +11,10 @@ const SidebarKurir = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const menuItems = [
-    { name: "Home", href: "/dashboard/kurir", icon: Home },
-    { name: "Task", href: "/dashboard/kurir/task", icon: BookOpen },
-    { name: "Riwayat", href: "/dashboard/kurir/riwayat", icon: Clock },
-    { name: "Profile", href: "/dashboard/kurir/profil", icon: User },
+    { name: "Home", href: "/auth/dashboard/kurir", icon: Home },
+    { name: "Task", href: "/auth/dashboard/kurir/task", icon: BookOpen },
+    { name: "Riwayat", href: "/auth/dashboard/kurir/riwayat", icon: Clock },
+    { name: "Profile", href: "/auth/dashboard/kurir/profil", icon: User },
   ];
 
   const handleLogout = () => {
