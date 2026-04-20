@@ -87,7 +87,7 @@ export default function LoginKurir() {
             <h3 className="font-bold text-gray-800 text-center leading-tight mb-6">
               Selamat datang dan <br /> selamat bekerja!
             </h3>
-            <Link href="/dashboard/kurir" className="w-full bg-nadebee-primary text-white font-bold py-3 rounded-xl text-center shadow-md">
+            <Link href="/auth/dashboard/kurir" className="w-full bg-nadebee-primary text-white font-bold py-3 rounded-xl text-center shadow-md">
               Oke
             </Link>
           </div>
