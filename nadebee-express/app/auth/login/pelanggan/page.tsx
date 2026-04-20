@@ -80,7 +80,7 @@ export default function LoginPelanggan() {
             </div>
             <h3 className="font-bold text-gray-800 mb-1">Login Berhasil.</h3>
             <p className="text-gray-500 text-sm mb-6">Selamat datang!</p>
-            <Link href="/auth/dashboard/pelanggan/home" className="w-full bg-nadebee-primary text-white font-bold py-3 rounded-xl text-center shadow-md">
+            <Link href="/auth/dashboard/pelanggan" className="w-full bg-nadebee-primary text-white font-bold py-3 rounded-xl text-center shadow-md">
               Oke
             </Link>
           </div>
