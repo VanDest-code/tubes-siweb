@@ -69,7 +69,7 @@ export default function PelangganHomePage() {
           </h2>
 
           {/* Tombol Aksi Utama */}
-          <div className="w-full max-w-[300px] space-y-4 mb-12">
+          <div className="w-full max-w-75 space-y-4 mb-12">
             <Link href="/pelanggan/tracking" className="flex items-center justify-center h-14 rounded-2xl bg-[#4CAF50] text-white text-[16px] font-bold shadow-lg shadow-green-200 hover:bg-[#43A047] transition-colors">
               Lacak Paket
             </Link>
