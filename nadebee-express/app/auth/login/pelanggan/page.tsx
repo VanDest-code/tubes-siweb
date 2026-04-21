@@ -31,47 +31,66 @@ export default function LoginPelanggan() {
   };
 
   return (
-    <main className="min-h-screen bg-nadebee-green flex flex-col items-center px-6 py-12 relative font-poppins">
-      <Link href="/auth/login" className="self-start text-gray-400 text-sm mb-12">← Kembali</Link>
-
-      <div className="bg-nadebee-primary p-4 rounded-2xl text-white text-3xl mb-6 shadow-lg">👤</div>
-      <h1 className="text-lg font-bold mb-8 text-gray-800 uppercase tracking-wide">Masuk sebagai Pelanggan</h1>
-
-      <form onSubmit={handleLogin} className="w-full max-w-sm bg-white p-8 rounded-4xl border border-green-100 shadow-sm space-y-6">
-        <div>
-          <label className="block text-xs font-bold text-gray-700 mb-2">Email</label>
-          <input 
-            type="text"
-            placeholder="Masukkan Email"
-            className={`w-full bg-green-50/50 border ${errors.email ? 'border-red-400' : 'border-gray-100'} rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-nadebee-primary`}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          {errors.email && <p className="text-[10px] text-red-500 mt-1 italic">{errors.email}</p>}
+    <main className="min-h-screen bg-nadebee-green flex flex-col items-center relative font-poppins">
+      
+      {/* --- HEADER BAR --- */}
+      <header className="w-full bg-white border-b border-gray-100 px-8 h-[80px] flex items-center justify-between sticky top-0 z-50">
+        <Link href="/auth/login" className="text-gray-400 hover:text-gray-600 transition-all font-medium italic text-sm flex items-center gap-2">
+          ← Kembali
+        </Link>
+        
+        <div className="flex items-center gap-2">
+           <span className="text-xl">🐝</span>
+           <h1 className="text-lg font-black text-gray-900 tracking-tighter">
+             Nadebee <span className="text-green-500">Express</span>
+           </h1>
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-gray-700 mb-2">Password</label>
-          <input 
-            type="password"
-            placeholder="Masukkan Password"
-            className={`w-full bg-green-50/50 border ${errors.password ? 'border-red-400' : 'border-gray-100'} rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-nadebee-primary`}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {errors.password && <p className="text-[10px] text-red-500 mt-1 italic">{errors.password}</p>}
-        </div>
+        {/* Spacer agar logo tetap di tengah */}
+        <div className="w-[80px]"></div>
+      </header>
 
-        <button type="submit" className="w-full bg-nadebee-primary hover:bg-green-600 text-white font-bold py-4 rounded-xl transition-all shadow-md active:scale-95">
-          Login
-        </button>
+      {/* --- CONTENT AREA --- */}
+      <div className="flex flex-col items-center px-6 py-12 w-full">
+        <div className="bg-nadebee-primary p-4 rounded-2xl text-white text-3xl mb-6 shadow-lg">👤</div>
+        <h1 className="text-lg font-bold mb-8 text-gray-800 uppercase tracking-wide">Masuk sebagai Pelanggan</h1>
 
-        <p className="text-center text-[10px] text-gray-500">
-          Belum punya akun? <Link href="/auth/register/" className="text-nadebee-primary font-bold cursor-pointer hover:underline">Daftar</Link>
-        </p>
-      </form>
+        <form onSubmit={handleLogin} className="w-full max-w-sm bg-white p-8 rounded-4xl border border-green-100 shadow-sm space-y-6">
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-2">Email</label>
+            <input 
+              type="text"
+              placeholder="Masukkan Email"
+              className={`w-full bg-green-50/50 border ${errors.email ? 'border-red-400' : 'border-gray-100'} rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-nadebee-primary`}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            {errors.email && <p className="text-[10px] text-red-500 mt-1 italic">{errors.email}</p>}
+          </div>
 
-      {/* MODAL SUKSES (image_2b8e2c.png) */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-2">Password</label>
+            <input 
+              type="password"
+              placeholder="Masukkan Password"
+              className={`w-full bg-green-50/50 border ${errors.password ? 'border-red-400' : 'border-gray-100'} rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-nadebee-primary`}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            {errors.password && <p className="text-[10px] text-red-500 mt-1 italic">{errors.password}</p>}
+          </div>
+
+          <button type="submit" className="w-full bg-nadebee-primary hover:bg-green-600 text-white font-bold py-4 rounded-xl transition-all shadow-md active:scale-95">
+            Login
+          </button>
+
+          <p className="text-center text-[10px] text-gray-500">
+            Belum punya akun? <Link href="/auth/register/" className="text-nadebee-primary font-bold cursor-pointer hover:underline">Daftar</Link>
+          </p>
+        </form>
+      </div>
+
+      {/* MODAL SUKSES */}
       {showSuccess && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 px-10">
           <div className="bg-white rounded-3xl p-8 w-full max-w-xs flex flex-col items-center animate-in fade-in zoom-in duration-300">

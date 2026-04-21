@@ -30,7 +30,7 @@ export default function KonfirmasiPickupPage() {
     <main className="min-h-screen bg-[#F4F9F4] font-sans pb-20">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      {/* NAVBAR */}
+      {/* NAVBAR
       <header className="h-20 bg-white flex items-center px-8 sticky top-0 z-30 justify-between border-b border-gray-100">
         <button 
           onClick={() => setIsSidebarOpen(true)} 
@@ -47,7 +47,7 @@ export default function KonfirmasiPickupPage() {
           </h1>
         </div>
         <div className="w-10"></div>
-      </header>
+      </header> */}
 
       <section className="max-w-[1200px] mx-auto pt-12 px-6">
         <div className="mb-10">

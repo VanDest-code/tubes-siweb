@@ -67,7 +67,7 @@ export default function ProfilePage() {
     <main className="min-h-screen bg-[#F8FFF8] pb-20">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      {/* NAVBAR */}
+      {/* NAVBAR
       <header className="h-16 bg-white flex items-center px-6 sticky top-0 z-30 justify-between border-b border-gray-50">
         <button onClick={() => setIsSidebarOpen(true)} className="w-10 h-10 rounded-lg bg-gray-50 flex flex-col items-center justify-center gap-[3px]">
           <div className="w-5 h-[2px] bg-black"></div>
@@ -79,7 +79,7 @@ export default function ProfilePage() {
           <h1 className="text-lg font-bold">Nadebee <span className="text-[#4CAF50]">Express</span></h1>
         </div>
         <div className="w-10"></div>
-      </header>
+      </header> */}
 
       <section className="flex flex-col items-center pt-12 px-6 max-w-xl mx-auto">
         <div className="text-center mb-6">

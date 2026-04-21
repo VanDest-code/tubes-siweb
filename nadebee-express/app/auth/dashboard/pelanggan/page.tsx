@@ -1,148 +1,136 @@
 "use client";
+
 import { useState, useEffect } from "react";
-import Sidebar from "@/components/layout/Sidebar";
 import Image from "next/image";
 import Link from "next/link";
 import LogoNadebee from "@/public/logo.png";
-import { Truck, MapPin, CheckCircle } from "lucide-react"; // Ikon untuk fitur bawah
+import { Truck, MapPin, CheckCircle, AlertCircle } from "lucide-react"; // Tambah AlertCircle
 
 export default function PelangganHomePage() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [time, setTime] = useState(new Date());
+  const [isError, setIsError] = useState(false); // Tambah state ini (default false)
 
-  // Mencegah error Hydration Mismatch
   useEffect(() => {
     setMounted(true);
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  const now = new Date();
-  const hari = now.toLocaleDateString("id-ID", { 
-    weekday: "long", 
-    day: "numeric", 
-    month: "long", 
-    year: "numeric" 
+  const hari = time.toLocaleDateString("id-ID", { 
+    weekday: "long", day: "numeric", month: "long", year: "numeric" 
   });
-  const jam = now.toLocaleTimeString("id-ID", { 
-    hour12: false,
-    hour: "2-digit",
-    minute: "2-digit"
+  
+  const jam = time.toLocaleTimeString("id-ID", { 
+    hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" 
   }).replace(/:/g, ".");
 
+  if (!mounted) return null;
+
   return (
-    <main className="min-h-screen bg-[#F4F4F4] relative font-sans">
+    <div className="w-full flex flex-col items-center pt-10 pb-20 px-6 max-w-5xl mx-auto">
       
-      {/* Sidebar Component */}
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
-      {/* HEADER NAVBAR */}
-      <header className="h-20 bg-white flex items-center px-6 sticky top-0 z-30 justify-between shadow-sm border-b border-gray-50">
-        <button 
-          onClick={() => setIsSidebarOpen(true)}
-          className="w-12 h-12 rounded-2xl bg-[#E8F5E9] flex flex-col items-center justify-center gap-[4px] hover:bg-[#C8E6C9] transition-all group"
-        >
-          <div className="w-5 h-[2px] bg-gray-700 rounded-full group-hover:bg-[#4CAF50]"></div>
-          <div className="w-5 h-[2px] bg-gray-700 rounded-full group-hover:bg-[#4CAF50]"></div>
-          <div className="w-5 h-[2px] bg-gray-700 rounded-full group-hover:bg-[#4CAF50]"></div>
-        </button>
-
-        <div className="flex items-center gap-2">
-           <span className="text-xl">🐝</span>
-           <h1 className="text-[17px] font-bold text-black tracking-tight">
-             Nadebee <span className="text-[#4CAF50]">Express</span>
-           </h1>
+      {/* 1. INFO WAKTU */}
+      <div className="w-full mb-10">
+        <div className="flex flex-col items-start">
+          <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Hari ini</p>
+          <p className="text-[16px] font-bold text-gray-800">{hari}</p>
+          <p className="text-[16px] font-bold text-green-600">{jam}</p>
         </div>
-        
-        {/* Spacer agar logo tetap di tengah */}
-        <div className="w-12" /> 
-      </header>
+      </div>
 
-      {/* KONTEN DASHBOARD */}
-      <section className="min-h-[calc(100vh-80px)] bg-[#F0F9F0] flex flex-col items-center pt-10 px-6 pb-20">
-        
-        {/* Info Waktu */}
-        <div className="w-full max-w-2xl mb-10 flex justify-between items-end px-2">
-          <div>
-            <p className="text-[11px] text-gray-400 uppercase font-black tracking-widest mb-1">Hari ini</p>
-            <p className="text-[15px] font-bold text-gray-800 capitalize">
-              {mounted ? hari : "..."}
-            </p>
-          </div>
-          <p className="text-[15px] font-bold text-[#4CAF50]">
-            {mounted ? `${jam} WIB` : "--.-- WIB"}
-          </p>
-        </div>
-
-        {/* Logo Utama */}
-        <div className="w-32 h-32 rounded-full border-[6px] border-white shadow-2xl shadow-green-100/50 bg-white flex items-center justify-center mb-8 transform hover:scale-105 transition-transform">
+      {/* 2. LOGO & GREETING */}
+      <div className="flex flex-col items-center text-center mb-12">
+        <div className="w-44 h-44 flex items-center justify-center mb-6">
           <Image 
             src={LogoNadebee} 
-            alt="Logo" 
-            width={90} 
-            height={90} 
-            style={{ height: 'auto' }}
+            alt="Logo Nadebee Express" 
+            width={180} 
+            height={180} 
+            className="object-contain drop-shadow-2xl"
             priority 
           />
         </div>
-
-        <h2 className="text-[22px] font-bold text-gray-900 mb-10 tracking-tight">
+        <h2 className="text-[26px] font-black text-gray-900 tracking-tight">
           Halo! Selamat datang..
         </h2>
+      </div>
 
-        {/* Tombol Utama */}
-        <div className="w-full max-w-[300px] space-y-4 mb-16">
-          <Link 
-            href="/auth/dashboard/pelanggan/tracking" 
-            className="flex items-center justify-center h-14 rounded-[22px] bg-[#4CAF50] text-white font-bold shadow-lg shadow-green-200 hover:bg-[#43A047] transition-all"
-          >
-            Lacak Paket
-          </Link>
-          <Link 
-            href="/auth/dashboard/pelanggan/request-pickup" 
-            className="flex items-center justify-center h-14 rounded-[22px] bg-white border-2 border-gray-100 text-gray-800 font-bold shadow-sm hover:bg-gray-50 transition-all"
-          >
-            Request Pickup
-          </Link>
-        </div>
+      {/* 3. TOMBOL AKSI */}
+      <div className="w-full max-w-[340px] space-y-4 mb-20">
+        <Link 
+          href="/auth/dashboard/pelanggan/tracking" 
+          className="flex items-center justify-center w-full h-16 rounded-[24px] bg-[#4CAF50] text-white font-black text-lg shadow-lg shadow-green-100 hover:bg-[#43A047] transition-all"
+        >
+          Lacak Paket
+        </Link>
+        <Link 
+          href="/auth/dashboard/pelanggan/request-pickup" 
+          className="flex items-center justify-center w-full h-16 rounded-[24px] bg-white border-2 border-gray-100 text-gray-800 font-black text-lg hover:bg-gray-50 shadow-sm transition-all"
+        >
+          Request Pickup
+        </Link>
+      </div>
 
-        {/* --- FITUR CARDS (Bagian yang sebelumnya belum tampil) --- */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-3xl mb-12">
-          {/* Card 1 */}
-          <div className="bg-white p-6 rounded-[24px] shadow-sm flex flex-col items-center text-center border border-white">
-            <div className="w-10 h-10 bg-[#F1F8E9] text-[#4CAF50] rounded-xl flex items-center justify-center mb-4">
-              <Truck size={20} />
-            </div>
-            <h3 className="text-[13px] font-bold text-gray-800 mb-1">Request Pickup</h3>
-            <p className="text-[10px] text-gray-400 font-medium">Isi form dan tentukan lokasi penjemputan</p>
+      {/* 4. GRID CARD FITUR */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-16">
+        <div className="bg-white p-8 rounded-[32px] shadow-sm flex flex-col items-center text-center border border-white">
+          <div className="w-12 h-12 bg-[#F1F8E9] text-[#4CAF50] rounded-2xl flex items-center justify-center mb-4">
+            <Truck size={24} />
           </div>
-
-          {/* Card 2 */}
-          <div className="bg-white p-6 rounded-[24px] shadow-sm flex flex-col items-center text-center border border-white">
-            <div className="w-10 h-10 bg-[#E3F2FD] text-[#2196F3] rounded-xl flex items-center justify-center mb-4">
-              <MapPin size={20} />
-            </div>
-            <h3 className="text-[13px] font-bold text-gray-800 mb-1">Kurir Datang</h3>
-            <p className="text-[10px] text-gray-400 font-medium">Kurir kami menuju lokasi anda</p>
-          </div>
-
-          {/* Card 3 */}
-          <div className="bg-white p-6 rounded-[24px] shadow-sm flex flex-col items-center text-center border border-white">
-            <div className="w-10 h-10 bg-[#FFF8E1] text-[#FFC107] rounded-xl flex items-center justify-center mb-4">
-              <CheckCircle size={20} />
-            </div>
-            <h3 className="text-[13px] font-bold text-gray-800 mb-1">Paket Sampai</h3>
-            <p className="text-[10px] text-gray-400 font-medium">Paket diantarkan hingga tujuan</p>
-          </div>
-        </div>
-
-        {/* TIPS BOX */}
-        <div className="w-full max-w-2xl bg-[#D7ECD9] p-6 rounded-[30px] border border-white/50 text-center">
-          <p className="text-[12px] font-semibold text-[#2E7D32] leading-relaxed">
-            <span className="block text-[14px] mb-1">💡 Tips</span>
-            Simpan nomor resimu, lalu masukkan di halaman Tracking untuk mulai melacak paketmu!
+          <h3 className="text-[14px] font-black text-gray-800 mb-2">Request Pickup</h3>
+          <p className="text-[11px] text-gray-400 font-semibold px-4">
+            Isi form dan tentukan lokasi penjemputan
           </p>
         </div>
 
-      </section>
-    </main>
+        <div className="bg-white p-8 rounded-[32px] shadow-sm flex flex-col items-center text-center border border-white">
+          <div className="w-12 h-12 bg-[#E3F2FD] text-[#2196F3] rounded-2xl flex items-center justify-center mb-4">
+            <MapPin size={24} />
+          </div>
+          <h3 className="text-[14px] font-black text-gray-800 mb-2">Kurir Datang</h3>
+          <p className="text-[11px] text-gray-400 font-semibold px-4">
+            Kurir kami menuju lokasi anda
+          </p>
+        </div>
+
+        <div className="bg-white p-8 rounded-[32px] shadow-sm flex flex-col items-center text-center border border-white">
+          <div className="w-12 h-12 bg-[#FFF8E1] text-[#FFC107] rounded-2xl flex items-center justify-center mb-4">
+            <CheckCircle size={24} />
+          </div>
+          <h3 className="text-[14px] font-black text-gray-800 mb-2">Paket Sampai</h3>
+          <p className="text-[11px] text-gray-400 font-semibold px-4">
+            Paket diantarkan hingga tujuan
+          </p>
+        </div>
+      </div>
+
+      {/* TAMPILAN ERROR FIGMA */}
+      {isError && (
+        <div className="w-full max-w-2xl mx-auto mb-16 animate-in fade-in zoom-in duration-300">
+          <div className="bg-white rounded-[32px] p-1 border-2 border-red-400 shadow-xl shadow-red-100">
+            <div className="bg-white rounded-[28px] border border-red-400 p-16 flex flex-col items-center text-center">
+              <div className="w-14 h-14 bg-red-500 text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-red-200">
+                <AlertCircle size={32} strokeWidth={3} />
+              </div>
+              <h3 className="text-red-500 font-black text-[18px] mb-2 uppercase tracking-wide">
+                Nomor resi tidak ditemukan
+              </h3>
+              <p className="text-gray-400 text-[15px] font-medium">
+                Coba cek lagi ya!
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. TIPS BOX */}
+      <div className="w-full max-w-4xl bg-[#D7ECD9] p-8 rounded-[40px] border border-white text-center shadow-sm">
+        <p className="text-[12px] font-bold text-[#2E7D32] leading-relaxed">
+          <span className="block text-[15px] mb-1 font-black uppercase tracking-wider">💡 Tips</span>
+          Simpan nomor resimu, lalu masukkan di halaman Tracking untuk mulai melacak paketmu!
+        </p>
+      </div>
+    </div>
   );
 }
