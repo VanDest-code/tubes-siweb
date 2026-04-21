@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, Clock, ChevronLeft, MapPin, CreditCard } from "lucide-react";
 
-// 1. PINDAHKAN SEMUA LOGIKA KE SINI
+// 1. Komponen Internal khusus untuk menangani SearchParams
 function DetailPengirimanContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -40,7 +40,7 @@ function DetailPengirimanContent() {
   if (!mounted) return null;
 
   return (
-    <main className="w-full min-h-screen bg-[#F8F9FA] pb-20">
+    <main className="w-full min-h-screen bg-[#F8F9FA] pb-20 font-sans">
       <div className="w-full bg-white border-b border-gray-100 px-6 py-4 flex items-center gap-4">
         <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
           <ChevronLeft size={24} className="text-gray-600" />
@@ -127,10 +127,10 @@ function DetailPengirimanContent() {
   );
 }
 
-// 2. INI BAGIAN PALING KRUSIAL: Bungkus seluruh file ke dalam Suspense
+// 2. Export default yang HANYA membungkus komponen di atas dengan Suspense
 export default function DetailPengirimanPage() {
   return (
-    <Suspense fallback={<div className="p-20 text-center font-black text-[#4CAF50]">LOADING NADEBEE...</div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen font-black text-[#4CAF50]">MEMUAT DATA NADEBEE...</div>}>
       <DetailPengirimanContent />
     </Suspense>
   );
