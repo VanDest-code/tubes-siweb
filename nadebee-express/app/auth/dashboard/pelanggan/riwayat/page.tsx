@@ -1,178 +1,160 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Search, Calendar, ChevronRight } from "lucide-react";
 
-// Tipe Data
-interface RiwayatItem {
-  id: string;
-  resi: string;
-  status: "Selesai" | "Menunggu Kurir" | "Paket Sudah Diambil" | "Dalam Perjalanan" | "Kurir Menuju Lokasi";
-  pengirim: string;
-  penerima: string;
-  wilayah: string;
-  jenis: string;
-  berat: string;
-  waktu: "Hari ini" | "Kemarin";
-}
+import { Suspense, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Check, Clock, ChevronLeft, Package, MapPin, Phone, CreditCard, Scale } from "lucide-react";
 
-// 5 DATA DUMMY LENGKAP
-const RIWAYAT_DATA: RiwayatItem[] = [
-  {
-    id: "1",
-    resi: "NDB001",
-    status: "Selesai",
-    pengirim: "Siti Rahayu",
-    penerima: "Farhan Rizki",
-    wilayah: "Sleman",
-    jenis: "Dokumen",
-    berat: "1-5 Kg",
-    waktu: "Hari ini",
-  },
-  {
-    id: "2",
-    resi: "NDB002",
-    status: "Dalam Perjalanan",
-    pengirim: "Budi Santoso",
-    penerima: "Ani Wijaya",
-    wilayah: "Bantul",
-    jenis: "Elektronik",
-    berat: "1-5 Kg",
-    waktu: "Hari ini",
-  },
-  {
-    id: "3",
-    resi: "NDB003",
-    status: "Paket Sudah Diambil",
-    pengirim: "Eko Prasetyo",
-    penerima: "Rina Sari",
-    wilayah: "Gunungkidul",
-    jenis: "Pakaian",
-    berat: "1-5 Kg",
-    waktu: "Kemarin",
-  },
-  {
-    id: "4",
-    resi: "NDB004",
-    status: "Kurir Menuju Lokasi",
-    pengirim: "Agus Setiawan",
-    penerima: "Dewi Lestari",
-    wilayah: "Kulon Progo",
-    jenis: "Makanan",
-    berat: "1-5 Kg",
-    waktu: "Kemarin",
-  },
-  {
-    id: "5",
-    resi: "NDB005",
-    status: "Menunggu Kurir",
-    pengirim: "Lestari Putri",
-    penerima: "Hendra Kurnia",
-    wilayah: "Kota Jogja",
-    jenis: "Kosmetik",
-    berat: "1-5 Kg",
-    waktu: "Kemarin",
-  },
-];
-
-export default function RiwayatPage() {
+// Komponen Konten Utama
+function DetailPengirimanContent() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [error, setError] = useState("");
+  const searchParams = useSearchParams();
+  const resiQuery = searchParams.get("resi") || "NDB001";
+  const [mounted, setMounted] = useState(false);
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchQuery(value);
-    const validStatuses = ["menunggu kurir", "paket sudah diambil", "dalam perjalanan", "selesai", "kurir menuju lokasi"];
-    if (value && !validStatuses.some(s => s.includes(value.toLowerCase()))) {
-      setError("Status tidak ditemukan.");
-    } else {
-      setError("");
-    }
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Data Dummy sesuai desain Nadebee
+  const detailData = {
+    resi: resiQuery,
+    pengirim: "Siti Rahayu",
+    telpPengirim: "08123456789",
+    alamatPickup: "Jl. Dagen Malioboro No.15, Yogyakarta",
+    penerima: "Farhan Rizki",
+    telpPenerima: "08987654321",
+    alamatTujuan: "Jl. Babarsari No.113, Sleman",
+    berat: "1-5 kg",
+    jenis: "Dokumen",
+    pembayaran: "Tunai",
+    ongkir: "Rp 20.000",
   };
 
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case "Selesai": return "bg-[#E8F5E9] text-[#4CAF50] border-[#A5D6A7]";
-      case "Menunggu Kurir": return "bg-[#FBE9E7] text-[#D84315] border-[#FFCCBC]";
-      case "Paket Sudah Diambil": return "bg-[#E3F2FD] text-[#1565C0] border-[#BBDEFB]";
-      case "Kurir Menuju Lokasi": return "bg-[#FFF8E1] text-[#FF8F00] border-[#FFE082]";
-      case "Dalam Perjalanan": return "bg-[#F3E5F5] text-[#7B1FA2] border-[#E1BEE7]";
-      default: return "bg-gray-100 text-gray-600 border-gray-300";
-    }
-  };
+  const trackingStatus = [
+    { label: "Menunggu Kurir", desc: "Permintaan Pickup sudah masuk", status: "completed" },
+    { label: "Kurir Menuju Lokasi", desc: "Kurir sedang dalam perjalanan", status: "completed" },
+    { label: "Paket Sudah Diambil", desc: "Paket sudah berhasil dijemput", status: "completed" },
+    { label: "Dalam Perjalanan", desc: "Paket sedang dikirim menuju tujuan", status: "active" },
+    { label: "Selesai", desc: "Paket sudah sampai dan diterima", status: "pending" },
+  ];
 
-  const filteredData = RIWAYAT_DATA.filter(item => 
-    item.status.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    item.resi.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  if (!mounted) return null;
 
   return (
-    <main className="w-full flex flex-col items-center pt-10 pb-20 px-6 max-w-5xl mx-auto">
-      <div className="w-full">
-        <div className="mb-8">
-          <h2 className="text-[28px] font-black text-[#1A1A1A]">Riwayat Pickup</h2>
-          <p className="text-gray-500 text-sm">Berikut adalah semua riwayat permohonan pickup mu</p>
-        </div>
-
-        <div className="relative mb-4">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            placeholder="Cari berdasarkan status atau nomor resi..."
-            value={searchQuery}
-            onChange={handleSearch}
-            className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-200 focus:outline-none focus:border-[#4CAF50] bg-white shadow-sm font-medium"
-          />
-        </div>
-
-        {error && <p className="text-red-500 italic text-[11px] mb-4 ml-1">{error}</p>}
-
-        <button className="flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm mb-8 hover:bg-gray-50 transition-all font-bold shadow-sm">
-          <Calendar size={16} />
-          <span>Tanggal</span>
+    <main className="w-full min-h-screen bg-[#F8F9FA] pb-20">
+      {/* Header */}
+      <div className="w-full bg-white border-b border-gray-100 px-6 py-4 flex items-center gap-4">
+        <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <ChevronLeft size={24} className="text-gray-600" />
         </button>
+        <h2 className="text-xl font-black text-[#1A1A1A]">Detail Pengiriman</h2>
+      </div>
 
-        {["Hari ini", "Kemarin"].map((waktu) => (
-          <div key={waktu} className="mb-10">
-            <h3 className="text-[15px] font-black text-black mb-6 uppercase tracking-wider">{waktu}</h3>
-            <div className="space-y-5">
-              {filteredData.filter(item => item.waktu === waktu).map((item) => (
-                <div 
-                  key={item.id}
-                  onClick={() => router.push(`/auth/dashboard/pelanggan/riwayat/detail-pengiriman?resi=${item.resi}`)}
-                  className="bg-white border-2 border-transparent rounded-[30px] p-7 flex items-center justify-between hover:border-green-100 hover:shadow-xl hover:shadow-green-50/50 transition-all cursor-pointer group active:scale-[0.98] shadow-sm shadow-gray-100"
-                >
-                  <div className="flex items-center gap-8">
-                    <div className="w-16 h-16 bg-[#F0FDF4] rounded-[22px] flex items-center justify-center border border-green-50">
-                      <span className="text-3xl">📦</span>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-4">
-                        <span className="text-lg font-black text-[#1A1A1A]">{item.resi}</span>
-                        <span className={`px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusStyle(item.status)}`}>
-                          {item.status}
-                        </span>
-                      </div>
-                      <p className="text-[14px] text-gray-400 font-bold">
-                        {item.pengirim} <span className="mx-1 text-green-300">→</span> {item.penerima}
-                      </p>
-                      <div className="flex gap-3 text-[11px] font-bold text-gray-400 uppercase tracking-tighter">
-                        <span>{item.wilayah}</span>
-                        <span className="text-gray-200">|</span>
-                        <span>{item.jenis}</span>
-                        <span className="text-gray-200">|</span>
-                        <span>{item.berat}</span>
-                      </div>
-                    </div>
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        {/* Card Resi & Status */}
+        <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 flex justify-between items-center">
+          <div>
+            <p className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-1">Nomor Resi</p>
+            <h1 className="text-3xl font-black text-[#4CAF50]">{detailData.resi}</h1>
+          </div>
+          <div className="bg-[#E8F5E9] px-6 py-2 rounded-full border border-[#A5D6A7]">
+            <span className="text-[#4CAF50] font-black text-xs uppercase tracking-widest text-center">Dalam Perjalanan</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Info Pengiriman */}
+          <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 space-y-8">
+            <div>
+              <h3 className="flex items-center gap-2 font-black text-black mb-6">
+                <MapPin size={20} className="text-[#4CAF50]" /> Alamat Pengiriman
+              </h3>
+              <div className="space-y-6 relative ml-2">
+                <div className="absolute left-[3px] top-2 bottom-2 w-[2px] bg-gray-100"></div>
+                <div className="relative pl-6">
+                  <div className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-[#4CAF50]"></div>
+                  <p className="text-xs text-gray-400 font-bold uppercase mb-1">Pengirim</p>
+                  <p className="font-black text-sm">{detailData.pengirim} ({detailData.telpPengirim})</p>
+                  <p className="text-gray-500 text-sm">{detailData.alamatPickup}</p>
+                </div>
+                <div className="relative pl-6">
+                  <div className="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-orange-400"></div>
+                  <p className="text-xs text-gray-400 font-bold uppercase mb-1">Penerima</p>
+                  <p className="font-black text-sm">{detailData.penerima} ({detailData.telpPenerima})</p>
+                  <p className="text-gray-500 text-sm">{detailData.alamatTujuan}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-gray-50 grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-400 font-bold uppercase mb-1">Berat</p>
+                <p className="font-black text-sm">{detailData.berat}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 font-bold uppercase mb-1">Jenis Barang</p>
+                <p className="font-black text-sm">{detailData.jenis}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tracking Status */}
+          <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
+            <h3 className="flex items-center gap-2 font-black text-black mb-8">
+              <Clock size={20} className="text-[#4CAF50]" /> Status Tracking
+            </h3>
+            <div className="space-y-8">
+              {trackingStatus.map((step, idx) => (
+                <div key={idx} className="flex gap-4 relative">
+                  {idx !== trackingStatus.length - 1 && (
+                    <div className={`absolute left-4 top-8 bottom-[-20px] w-[2px] ${step.status === 'completed' ? 'bg-[#4CAF50]' : 'bg-gray-100'}`}></div>
+                  )}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${
+                    step.status === 'completed' ? 'bg-[#4CAF50] text-white' : 
+                    step.status === 'active' ? 'bg-white border-2 border-[#4CAF50] text-[#4CAF50]' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {step.status === 'completed' ? <Check size={16} /> : <div className="w-2 h-2 rounded-full bg-current"></div>}
                   </div>
-                  <ChevronRight className="text-[#4CAF50] group-hover:translate-x-2 transition-transform" size={28} />
+                  <div>
+                    <p className={`font-black text-sm ${step.status === 'pending' ? 'text-gray-400' : 'text-black'}`}>{step.label}</p>
+                    <p className="text-xs text-gray-400">{step.desc}</p>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-        ))}
+        </div>
+
+        {/* Info Pembayaran */}
+        <div className="bg-[#4CAF50] rounded-[32px] p-8 text-white flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+              <CreditCard size={32} />
+            </div>
+            <div>
+              <p className="opacity-80 text-sm font-bold uppercase tracking-widest mb-1">Total Ongkos Kirim</p>
+              <h2 className="text-3xl font-black">{detailData.ongkir}</h2>
+            </div>
+          </div>
+          <div className="bg-white/20 px-6 py-3 rounded-2xl border border-white/30 text-center min-w-[150px]">
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Metode</p>
+            <p className="font-black text-lg">{detailData.pembayaran}</p>
+          </div>
+        </div>
       </div>
     </main>
+  );
+}
+
+// Export Utama dengan Suspense (Syarat Deploy Vercel)
+export default function DetailPengirimanPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full min-h-screen flex items-center justify-center bg-white font-black text-[#4CAF50] text-xl animate-pulse">
+        NADEBEE EXPRESS...
+      </div>
+    }>
+      <DetailPengirimanContent />
+    </Suspense>
   );
 }
