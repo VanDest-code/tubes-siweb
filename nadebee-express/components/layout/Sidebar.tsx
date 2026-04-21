@@ -10,7 +10,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
     { name: "Home", path: "/auth/dashboard/pelanggan", icon: Home },
     { name: "Tracking", path: "/auth/dashboard/pelanggan/tracking", icon: Search },
     { name: "Request Pickup", path: "/auth/dashboard/pelanggan/request-pickup", icon: MessageSquare },
-    { name: "Riwayat", path: "/auth/dashboard/pelanggan/history", icon: History },
+    { name: "Riwayat", path: "/auth/dashboard/pelanggan/riwayat", icon: History },
     { name: "Profile", path: "/auth/dashboard/pelanggan/profile", icon: User },
   ];
 
