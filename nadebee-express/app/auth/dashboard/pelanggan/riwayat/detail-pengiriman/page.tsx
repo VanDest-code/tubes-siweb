@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, Clock } from "lucide-react";
 
+export const dynamic = "force-dynamic";
 export default function DetailPengirimanPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
