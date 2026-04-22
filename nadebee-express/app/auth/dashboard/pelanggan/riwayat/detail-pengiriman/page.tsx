@@ -1,18 +1,26 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, Clock } from "lucide-react";
 
+// Memaksa Next.js untuk tidak melakukan prerender statis pada halaman ini
 export const dynamic = "force-dynamic";
-export default function DetailPengirimanPage() {
+
+/**
+ * Komponen Utama yang berisi logika useSearchParams
+ * Harus dipisah agar bisa dibungkus dalam Suspense Boundary
+ */
+function DetailPengirimanContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const resiQuery = searchParams.get("resi") || "NDB001";
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  // Data Dummy sesuai layout baru
   const detailData = {
     resi: resiQuery,
     pengirim: "Siti Rahayu",
@@ -48,15 +56,12 @@ export default function DetailPengirimanPage() {
           
           {/* KOLOM KIRI: INFORMASI PAKET */}
           <div className="space-y-10">
-            {/* Box Nomor Resi */}
             <div className="bg-[#E8F5E9]/60 border border-[#4CAF50]/30 rounded-[20px] p-8 w-full max-w-[320px]">
               <p className="text-gray-400 text-[14px] font-medium mb-2">Nomor Resi</p>
               <p className="text-[#4CAF50] font-black text-[22px] tracking-tight">{detailData.resi}</p>
             </div>
 
-            {/* List Detail */}
             <div className="space-y-12 text-[16px]">
-              {/* Group Pengirim */}
               <div className="grid grid-cols-[160px_1fr] gap-4">
                 <div className="text-gray-400 space-y-2">
                   <p>Pengirim</p>
@@ -70,7 +75,6 @@ export default function DetailPengirimanPage() {
                 </div>
               </div>
 
-              {/* Group Penerima */}
               <div className="grid grid-cols-[160px_1fr] gap-4">
                 <div className="text-gray-400 space-y-2">
                   <p>Penerima</p>
@@ -84,7 +88,6 @@ export default function DetailPengirimanPage() {
                 </div>
               </div>
 
-              {/* Group Info Fisik */}
               <div className="grid grid-cols-[160px_1fr] gap-4">
                 <div className="text-gray-400 space-y-2">
                   <p>Berat</p>
@@ -105,12 +108,10 @@ export default function DetailPengirimanPage() {
           {/* KOLOM KANAN: TIMELINE */}
           <div className="relative">
             <div className="space-y-12 relative">
-              {/* Line Connector Tengah */}
               <div className="absolute left-[20px] top-4 bottom-4 w-[1px] bg-gray-300"></div>
 
               {trackingStatus.map((item, idx) => (
                 <div key={idx} className="flex gap-10 relative items-start">
-                  {/* Icon Bulat */}
                   <div className={`z-10 w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all duration-300 ${
                     item.status === "completed" ? "bg-[#E8F5E9] border-[#4CAF50] text-[#4CAF50]" :
                     item.status === "active" ? "bg-[#4CAF50] border-[#4CAF50] text-white shadow-lg shadow-green-100" :
@@ -119,7 +120,6 @@ export default function DetailPengirimanPage() {
                     {item.status === "pending" ? <Clock size={20} /> : <Check size={20} strokeWidth={3} />}
                   </div>
 
-                  {/* Teks Status */}
                   <div className="pt-1">
                     <p className={`text-[16px] font-black leading-none mb-2 ${
                       item.status === "pending" ? "text-gray-400" : "text-black"
@@ -137,7 +137,7 @@ export default function DetailPengirimanPage() {
         </div>
       </div>
 
-      {/* Tombol Kembali di Bawah Luar Box */}
+      {/* Tombol Kembali */}
       <div className="w-full flex justify-end">
         <button 
           onClick={() => router.back()}
@@ -147,5 +147,22 @@ export default function DetailPengirimanPage() {
         </button>
       </div>
     </main>
+  );
+}
+
+/**
+ * Export default yang membungkus konten dalam Suspense.
+ * Ini adalah solusi final untuk error Prerender/useSearchParams di Vercel.
+ */
+export default function DetailPengirimanPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#4CAF50] mb-4"></div>
+        <p className="font-black text-[#4CAF50]">Memuat Detail Pengiriman...</p>
+      </div>
+    }>
+      <DetailPengirimanContent />
+    </Suspense>
   );
 }
