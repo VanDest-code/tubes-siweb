@@ -64,7 +64,7 @@ export default function RoleSelection() {
           </Link>
 
           {/* Card Kurir */}
-          <Link href="/app/auth/login/kurir" className="block bg-white p-5 md:p-6 rounded-[28px] shadow-sm border-2 border-transparent hover:border-nadebee-primary transition-all active:scale-[0.98]">
+          <Link href="/auth/login/kurir" className="block bg-white p-5 md:p-6 rounded-[28px] shadow-sm border-2 border-transparent hover:border-nadebee-primary transition-all active:scale-[0.98]">
             <div className="flex items-center gap-4">
               <div className="bg-green-100 p-3 md:p-4 rounded-2xl text-nadebee-primary text-xl md:text-2xl">🚚</div>
               <div>
