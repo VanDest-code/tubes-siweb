@@ -40,20 +40,6 @@ export default function RequestPickupPage() {
   return (
     <main className="min-h-screen bg-[#F4F9F4] font-sans pb-20">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
-      <header className="h-20 bg-white flex items-center px-8 sticky top-0 z-30 justify-between border-b border-gray-100">
-        <button onClick={() => setIsSidebarOpen(true)} className="w-10 h-10 rounded-xl bg-[#E8F5E9] flex flex-col items-center justify-center gap-[3px]">
-          <div className="w-5 h-[2px] bg-black"></div>
-          <div className="w-5 h-[2px] bg-black"></div>
-          <div className="w-5 h-[2px] bg-black"></div>
-        </button>
-        <div className="flex items-center gap-2">
-          <span className="text-xl">🐝</span>
-          <h1 className="text-[18px] font-bold tracking-tight">Nadebee <span className="text-[#4CAF50]">Express</span></h1>
-        </div>
-        <div className="w-10"></div>
-      </header> 
-
       <section className="max-w-[1100px] mx-auto pt-12 px-6">
         <div className="mb-10">
           <h2 className="text-[28px] font-bold text-[#1A1A1A]">Request Pickup</h2>
