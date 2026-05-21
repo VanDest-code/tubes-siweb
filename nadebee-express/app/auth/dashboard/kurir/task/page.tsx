@@ -6,16 +6,27 @@ import { Package, MapPin, ArrowRight, ArrowLeft, CheckCircle2, Phone, Upload, Cl
 export default function TaskPage() {
   const [activeTab, setActiveTab] = useState<"menunggu" | "aktif">("menunggu");
   const [selectedTask, setSelectedTask] = useState<any>(null);
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-  const [showFinishedPopup, setShowFinishedPopup] = useState(false);
-  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
-  const [showRejectSuccess, setShowRejectSuccess] = useState(false);
+  
+  // State manajemen pop-up konfirmasi & sukses
+  const [showAcceptConfirm, setShowAcceptConfirm] = useState(false); // Pop-up tanya saat mau ambil (BARU)
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false); // Pop-up sukses setelah ambil
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false); // Pop-up tanya saat mau tolak
+  const [showRejectSuccess, setShowRejectSuccess] = useState(false); // Pop-up sukses setelah tolak
+  const [showFinishedPopup, setShowFinishedPopup] = useState(false); // Pop-up sukses kirim bukti selesai
+  
   const [currentStatus, setCurrentStatus] = useState("Kurir Menuju Lokasi");
-
   const [startTime, setStartTime] = useState<number | null>(null);
   const [liveDuration, setLiveDuration] = useState("00:00");
   const [finalDuration, setFinalDuration] = useState("");
   const [fileError, setFileError] = useState(false);
+
+  // Logika Pagination bawaan yang menyesuaikan
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 3;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
 
   useEffect(() => {
     let interval: any;
@@ -41,6 +52,12 @@ export default function TaskPage() {
   const waitingTasks = allTasks.filter(t => t.status === "Menunggu Kurir");
   const activeTasks = allTasks.filter(t => t.status !== "Menunggu Kurir");
 
+  const dataTabSesuai = activeTab === "menunggu" ? waitingTasks : activeTasks;
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const dataPerHalaman = dataTabSesuai.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(dataTabSesuai.length / itemsPerPage) || 1;
+
   const getStatusStyle = (status: string) => {
     switch (status) {
       case "Paket Sudah Diambil": return "bg-blue-50 text-blue-500 border-blue-200";
@@ -50,11 +67,13 @@ export default function TaskPage() {
     }
   };
 
+  // Eksekusi Ambil Tugas setelah klik 'Ya' pada pop-up konfirmasi
   const handleConfirmAmbil = () => {
+    setShowAcceptConfirm(false); // Tutup pop-up tanya ambil
     setAllTasks(prev => prev.map(task => 
       task.id === selectedTask.id ? { ...task, status: "Kurir Menuju Lokasi" } : task
     ));
-    setShowSuccessPopup(true);
+    setShowSuccessPopup(true); // Munculkan pop-up sukses ambil
   };
 
   const handleConfirmTolak = () => {
@@ -104,34 +123,125 @@ export default function TaskPage() {
     setLiveDuration("00:00");
   };
 
+  const renderPaginationButtons = () => {
+    const buttons = [];
+    for (let i = 1; i <= totalPages; i++) {
+      buttons.push(i);
+    }
+    return buttons;
+  };
+
   if (selectedTask) {
     const isAktif = activeTab === "aktif";
 
     return (
       <div className="max-w-5xl mx-auto space-y-6 pb-20 px-4 md:px-0">
-        {/* POP-UP KONFIRMASI TOLAK */}
-        {showRejectConfirm && (
+        
+        {/* ================= POP-UP KONFIRMASI AMBIL TUGAS (BARU) ================= */}
+        {showAcceptConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
             <div className="bg-white rounded-[32px] p-8 md:p-10 max-w-sm w-full text-center relative z-10 shadow-2xl animate-in zoom-in duration-300">
-              <div className="w-16 h-16 border-2 border-green-500 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6"><HelpCircle size={32} /></div>
-              <h2 className="text-lg font-bold text-gray-900 mb-6 tracking-tight">Yakin untuk menolak <span className="font-black">{selectedTask.id}</span>?</h2>
-              <button onClick={handleConfirmTolak} className="w-full bg-[#4CAF50] text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-colors">Ya</button>
+              <div className="w-16 h-16 border-2 border-green-500 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <HelpCircle size={32} />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900 mb-6 tracking-tight">
+                Yakin untuk mengambil <span className="font-black">{selectedTask.id}</span>?
+              </h2>
+              <div className="flex gap-3">
+                <button onClick={() => setShowAcceptConfirm(false)} className="flex-1 bg-white border border-gray-300 text-gray-500 font-bold py-3 rounded-xl hover:bg-gray-50 transition-colors">Batal</button>
+                <button onClick={handleConfirmAmbil} className="flex-1 bg-[#4CAF50] text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-colors">Ya</button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* ... (Popup lainnya disesuaikan p-8 md:p-10 untuk mobile) ... */}
-        {/* Sisipkan Popup Berhasil Ditolak, Berhasil Ambil, dan Selesai dengan struktur yang sama */}
+        {/* ================= POP-UP KONFIRMASI TOLAK TUGAS ================= */}
+        {showRejectConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
+            <div className="bg-white rounded-[32px] p-8 md:p-10 max-w-sm w-full text-center relative z-10 shadow-2xl animate-in zoom-in duration-300">
+              <div className="w-16 h-16 border-2 border-green-500 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <HelpCircle size={32} />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900 mb-6 tracking-tight">
+                Yakin untuk menolak <span className="font-black">{selectedTask.id}</span>?
+              </h2>
+              <div className="flex gap-3">
+                <button onClick={() => setShowRejectConfirm(false)} className="flex-1 bg-white border border-gray-300 text-gray-500 font-bold py-3 rounded-xl hover:bg-gray-50 transition-colors">Batal</button>
+                <button onClick={handleConfirmTolak} className="flex-1 bg-[#4CAF50] text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-colors">Ya</button>
+              </div>
+            </div>
+          </div>
+        )}
 
-        <button onClick={() => setSelectedTask(null)} className="flex items-center gap-2 text-gray-500 hover:text-green-600 font-medium transition-colors mt-4"><ArrowLeft size={20} /> Kembali</button>
+        {/* POP-UP BERHASIL AMBIL TUGAS */}
+        {showSuccessPopup && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
+            <div className="bg-white rounded-[32px] p-8 md:p-10 max-w-sm w-full text-center relative z-10 shadow-2xl animate-in zoom-in duration-300">
+              <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 size={32} />
+              </div>
+              <h2 className="text-xl font-black text-gray-900 mb-2">Pickup Berhasil Diambil</h2>
+              <p className="text-gray-500 text-sm mb-6">Tugas otomatis masuk ke tab aktif. Segera menuju lokasi penjemputan.</p>
+              <button onClick={handleStartMission} className="w-full bg-[#4CAF50] text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-colors">Oke</button>
+            </div>
+          </div>
+        )}
+
+      {/* ================= POP-UP BERHASIL DITOLAK (DIPERBAIKI) ================= */}
+      {showRejectSuccess && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop blur */}
+          <div className="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
+          
+          {/* Modal Box */}
+          <div className="bg-white rounded-[32px] p-8 md:p-10 max-w-sm w-full text-center relative z-10 shadow-2xl animate-in zoom-in duration-300">
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <XCircle size={32} />
+            </div>
+            <h2 className="text-xl font-black text-gray-900 mb-2 tracking-tight">Tugas Ditolak</h2>
+            <p className="text-gray-500 text-sm mb-8">
+              Tugas penjemputan berhasil dihapus dari daftar aktivitas Anda.
+            </p>
+            <button 
+              onClick={handleRejectSuccessDone} 
+              className="w-full bg-[#4CAF50] text-white font-bold py-4 rounded-xl hover:bg-green-600 transition-colors"
+            >
+              Oke
+            </button>
+          </div>
+        </div>
+      )}
+        {/* POP-UP TUGAS SELESAI */}
+        {showFinishedPopup && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
+            <div className="bg-white rounded-[32px] p-8 md:p-10 max-w-sm w-full text-center relative z-10 shadow-2xl animate-in zoom-in duration-300">
+              <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 size={32} />
+              </div>
+              <h2 className="text-xl font-black text-gray-900 mb-2">Misi Selesai!</h2>
+              <p className="text-gray-500 text-sm mb-1">Terima kasih atas kerja kerasmu.</p>
+              <p className="text-green-600 text-xs font-black mb-6">Waktu Penyelenggaraan: {finalDuration}</p>
+              <button onClick={handleCloseAll} className="w-full bg-[#4CAF50] text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-colors">Tutup Aktivitas</button>
+            </div>
+          </div>
+        )}
+
+        <button onClick={() => setSelectedTask(null)} className="flex items-center gap-2 text-gray-500 hover:text-green-600 font-medium transition-colors mt-4">
+          <ArrowLeft size={20} /> Kembali
+        </button>
 
         <div className="bg-white border border-green-500 rounded-[24px] p-6 md:p-8 shadow-sm">
           <div className="flex flex-col md:flex-row justify-between items-start mb-8 md:mb-10 gap-4">
             <div className="space-y-1">
               <span className="font-black text-xl text-gray-900 block">{selectedTask.id}</span>
               {isAktif && (
-                <div className="flex items-center gap-2 text-red-500 font-bold text-xs animate-pulse"><Clock size={12} /><span>Durasi: {liveDuration}</span></div>
+                <div className="flex items-center gap-2 text-red-500 font-bold text-xs animate-pulse">
+                  <Clock size={12} /><span>Durasi: {liveDuration}</span>
+                </div>
               )}
             </div>
             <span className={`text-[10px] font-black px-6 md:px-8 py-2 rounded-full border uppercase transition-all duration-300 ${isAktif ? getStatusStyle(currentStatus) : "bg-red-50 text-red-500 border-red-200"}`}>
@@ -171,7 +281,8 @@ export default function TaskPage() {
         {!isAktif ? (
           <div className="flex flex-col md:flex-row gap-4 md:gap-6 mt-10">
             <button onClick={() => setShowRejectConfirm(true)} className="flex-1 bg-white border border-red-500 text-red-500 font-bold py-4 rounded-full transition-colors hover:bg-red-50 order-2 md:order-1">Tolak Tugas</button>
-            <button onClick={handleConfirmAmbil} className="flex-1 bg-[#4CAF50] text-white font-bold py-4 rounded-full shadow-lg transition-colors hover:bg-green-600 order-1 md:order-2">Ambil Tugas</button>
+            {/* Mengubah pemicu tombol langsung ke pop-up tanya ambil terlebih dahulu */}
+            <button onClick={() => setShowAcceptConfirm(true)} className="flex-1 bg-[#4CAF50] text-white font-bold py-4 rounded-full shadow-lg transition-colors hover:bg-green-600 order-1 md:order-2">Ambil Tugas</button>
           </div>
         ) : (
           <div className="space-y-6">
@@ -187,8 +298,8 @@ export default function TaskPage() {
                 <label>
                   <div className={`border-2 border-dashed rounded-2xl p-6 md:p-10 flex flex-col items-center justify-center cursor-pointer transition-all ${fileError ? "border-red-400 bg-red-50/30" : "border-gray-300 hover:bg-gray-50"}`}>
                     <input type="file" className="hidden" accept="image/png, image/jpeg" onChange={handleFileChange} />
-                    <Upload className={`${fileError ? "text-red-400" : "text-gray-400"} mb-2`} size={32} />
-                    <p className={`${fileError ? "text-red-400" : "text-gray-400"} text-sm font-medium text-center`}>Klik untuk upload foto bukti</p>
+                    <Upload className={`... mb-2`} size={32} />
+                    <p className={`... text-sm font-medium text-center`}>Klik untuk upload foto bukti</p>
                   </div>
                 </label>
                 {fileError && <p className="text-red-500 text-[11px] italic font-medium ml-1">Foto harus dalam bentuk .png/.jpg</p>}
@@ -218,7 +329,7 @@ export default function TaskPage() {
       </div>
 
       <div className="space-y-4">
-        {allTasks.filter(t => activeTab === "menunggu" ? t.status === "Menunggu Kurir" : t.status !== "Menunggu Kurir").map((task) => (
+        {dataPerHalaman.map((task) => (
           <div key={task.id} onClick={() => setSelectedTask(task)} className="bg-white border border-green-400 rounded-[20px] p-5 md:p-6 hover:shadow-md cursor-pointer group transition-all">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-3">
               <div className="flex items-center gap-3">
@@ -244,7 +355,55 @@ export default function TaskPage() {
             </div>
           </div>
         ))}
+
+        {dataPerHalaman.length === 0 && (
+          <div className="text-center py-12 text-gray-400 bg-white border border-dashed border-gray-200 rounded-[20px]">
+            Tidak ada tugas di bagian ini.
+          </div>
+        )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1 mt-10">
+          <button
+            type="button"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className={`w-10 h-10 border rounded-l-xl flex items-center justify-center font-bold text-sm transition-all border-gray-200 ${
+              currentPage === 1 ? "bg-white text-gray-300 cursor-not-allowed" : "bg-white text-gray-600 hover:bg-gray-50 active:scale-95"
+            }`}
+          >
+            ←
+          </button>
+
+          {renderPaginationButtons().map((page) => {
+            const isSelected = currentPage === page;
+            return (
+              <button
+                key={`page-${page}`}
+                type="button"
+                onClick={() => setCurrentPage(page)}
+                className={`w-10 h-10 font-bold text-sm transition-all border-y border-x border-gray-200 flex items-center justify-center ${
+                  isSelected ? "bg-green-600 text-white border-green-600 shadow-sm font-semibold" : "bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {page}
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className={`w-10 h-10 border rounded-r-xl flex items-center justify-center font-bold text-sm transition-all border-gray-200 ${
+              currentPage === totalPages ? "bg-white text-gray-300 cursor-not-allowed" : "bg-white text-gray-600 hover:bg-gray-50 active:scale-95"
+            }`}
+          >
+            →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
