@@ -72,7 +72,7 @@ export default function PelangganHomePage() {
         </h2>
       </div>
 
-      {/* ⚡ BARU: FORM TRACING INSTAN (Menghubungkan Fitur Error) */}
+      {/* ⚡ BARU: FORM TRACING INSTAN (Menghubungkan Fitur Error)
       <form onSubmit={handleCariResi} className="w-full max-w-[400px] mb-8 relative">
         <div className="relative flex items-center">
           <input 
@@ -92,7 +92,7 @@ export default function PelangganHomePage() {
             <Search size={18} />
           </button>
         </div>
-      </form>
+      </form> */}
 
       {/* 3. TOMBOL AKSI UTAMA */}
       <div className="w-full max-w-[340px] space-y-4 mb-16">

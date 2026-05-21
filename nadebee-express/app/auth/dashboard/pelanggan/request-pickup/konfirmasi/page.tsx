@@ -30,33 +30,16 @@ export default function KonfirmasiPickupPage() {
     <main className="min-h-screen bg-[#F4F9F4] font-sans pb-20">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      {/* NAVBAR
-      <header className="h-20 bg-white flex items-center px-8 sticky top-0 z-30 justify-between border-b border-gray-100">
-        <button 
-          onClick={() => setIsSidebarOpen(true)} 
-          className="w-10 h-10 rounded-xl bg-[#E8F5E9] flex flex-col items-center justify-center gap-[3px]"
-        >
-          <div className="w-5 h-[2px] bg-black"></div>
-          <div className="w-5 h-[2px] bg-black"></div>
-          <div className="w-5 h-[2px] bg-black"></div>
-        </button>
-        <div className="flex items-center gap-2">
-          <span className="text-xl">🐝</span>
-          <h1 className="text-[18px] font-bold tracking-tight">
-            Nadebee <span className="text-[#4CAF50]">Express</span>
-          </h1>
-        </div>
-        <div className="w-10"></div>
-      </header> */}
-
       <section className="max-w-[1200px] mx-auto pt-12 px-6">
         <div className="mb-10">
           <h2 className="text-[28px] font-bold text-[#1A1A1A]">Konfirmasi Pickup</h2>
           <p className="text-gray-500 text-sm">Request pickup kamu sudah masuk!</p>
         </div>
 
-        <div className="flex flex-col lg:flex-row items-start gap-12">
-          {/* Sisi Kiri: Ringkasan Card */}
+        {/* Pembungkus Utama Dua Kolom */}
+        <div className="flex flex-col lg:flex-row items-center lg:items-center justify-between gap-12 w-full">
+          
+          {/* Sisi Kiri: Ringkasan Card (Ukuran font, radius, & warna tetap asli milikmu) */}
           <div className="w-full lg:w-[60%]">
             <div className="bg-white border border-green-400 rounded-[30px] p-8 shadow-sm">
               <h3 className="text-xl font-bold mb-6">Ringkasan</h3>
@@ -101,6 +84,7 @@ export default function KonfirmasiPickupPage() {
               <h4 className="font-bold text-lg mb-4">Metode Pembayaran</h4>
               <div className="flex gap-4">
                 <button 
+                  type="button"
                   onClick={() => { setPaymentMethod("Tunai"); setError(""); }}
                   className={`flex-1 py-3 rounded-2xl font-bold border transition-all ${
                     paymentMethod === "Tunai" 
@@ -111,6 +95,7 @@ export default function KonfirmasiPickupPage() {
                   Tunai
                 </button>
                 <button 
+                  type="button"
                   onClick={() => { setPaymentMethod("Non Tunai"); setError(""); }}
                   className={`flex-1 py-3 rounded-2xl font-bold border transition-all ${
                     paymentMethod === "Non Tunai" 
@@ -129,22 +114,25 @@ export default function KonfirmasiPickupPage() {
             </div>
           </div>
 
-          {/* Sisi Kanan: Gambar Ilustrasi */}
-          <div className="w-full lg:w-[40%] flex justify-center items-center">
-            <div className="relative w-full max-w-[400px] aspect-square">
+          {/* Sisi Kanan: Gambar Ilustrasi (Dibuat center vertikal & proporsional menempel ke kanan desktop) */}
+          <div className="w-full lg:w-[40%] flex justify-center lg:justify-end items-center min-h-[350px]">
+            <div className="relative w-full max-w-[400px] lg:max-w-[440px] aspect-square flex items-center justify-center">
               <Image 
-                src="/image.png" // Pastikan gambar ada di folder public
+                src="/image.png" 
                 alt="Waiting for Nadebee" 
                 fill
                 className="object-contain"
+                priority
               />
             </div>
           </div>
-        </div>
 
-        {/* Action Button */}
+        </div> {/* Penutupan tag pembungkus kolom yang tadinya hilang */}
+
+        {/* Action Button Bagian Bawah */}
         <div className="mt-12">
           <button
+            type="button"
             onClick={handlePayment}
             className="w-full bg-[#4CAF50] hover:bg-[#43A047] text-white py-5 rounded-[25px] font-bold text-lg shadow-lg transition-transform active:scale-[0.98]"
           >
