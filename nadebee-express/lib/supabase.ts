@@ -1,16 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Disamakan menjadi PUBLISHABLE_KEY sesuai .env.local Anda
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; 
 
-// Log untuk memeriksa isi asli variabel di terminal dan browser console
-console.log("=== DEBUG SUPABASE ENV ===");
-console.log("NEXT_PUBLIC_SUPABASE_URL:", supabaseUrl);
-console.log("NEXT_PUBLIC_SUPABASE_ANON_KEY:", supabaseAnonKey ? "Ada (Terbaca)" : "Kosong (Undefined)");
-console.log("==========================");
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn("⚠️ PERINGATAN: Variabel lingkungan Supabase belum terbaca di .env.local!");
+}
 
-// Gunakan URL & Key tiruan jika aslinya kosong agar halaman tidak crash di awal
-const safeUrl = supabaseUrl || 'https://nadebee-placeholder.supabase.co';
-const safeKey = supabaseAnonKey || 'placeholder-anon-key';
-
-export const supabase = createClient(safeUrl, safeKey);
+export const supabase = createClient(
+  supabaseUrl || 'https://haovfjyqzfusbiswhgre.supabase.co', 
+  supabaseAnonKey || 'sb_publishable_rDgSqT1usma88ZD-nhANsA_0jcEL4_u'
+);

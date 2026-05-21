@@ -1,19 +1,24 @@
 "use client";
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import Sidebar from "@/components/layout/Sidebar";
 import { User, Phone, Mail, Edit3, CheckCircle2, Key, LogOut } from "lucide-react";
 
 export default function ProfilePage() {
+  const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // State Data & Edit Mode
   const [formData, setFormData] = useState({
-    username: "Natalie Laura",
-    phone: "082250082024",
-    email: "pratisthanatalie@gmai.com"
+    username: "",
+    phone: "",
+    email: ""
   });
   const [isEditUsername, setIsEditUsername] = useState(false);
   const [isEditPhone, setIsEditPhone] = useState(false);
@@ -22,11 +27,92 @@ export default function ProfilePage() {
   const [passwords, setPasswords] = useState({ old: "", new: "", confirm: "" });
   const [errors, setErrors] = useState({ old: "", new: "", confirm: "" });
 
-  const handleUpdatePassword = () => {
+  // 1. Ambil Data Pengguna Terautentikasi (Disederhanakan & Case-Insensitive)
+  useEffect(() => {
+    async function getProfile() {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+          router.push("/auth/login/pelanggan");
+          return;
+        }
+
+        // MEMAKSA EMAIL MENJADI HURUF KECIL UNTUK MENGHINDARI BUG CASE-SENSITIVE SQL
+        const userEmail = session.user.email ? session.user.email.toLowerCase().trim() : "";
+
+        // Ambil data profil berdasarkan email pengguna yang sedang login
+        const { data, error: profileError } = await supabase
+          .from("profiles")
+          .select("full_name, phone_number, email")
+          .eq("email", userEmail)
+          .single();
+
+        if (profileError) {
+          console.log("⚠️ Email tidak cocok atau gagal ditemukan di tabel profiles:", profileError.message);
+          
+          // Jika query gagal, gunakan data tangkapan langsung dari metadata session login
+          setFormData({
+            username: session.user.user_metadata?.full_name || "Pelanggan Nadebee",
+            phone: session.user.phone || "",
+            email: userEmail
+          });
+          return;
+        }
+
+        if (data) {
+          setFormData({
+            username: data.full_name || "",
+            phone: data.phone_number || "",
+            email: data.email || ""
+          });
+        }
+      } catch (err) {
+        console.error("Gagal mengeksekusi fungsi profil:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    getProfile();
+  }, [router]);
+
+  // 2. Fungsi Update Data Profil Menggunakan .upsert() Terarah
+  const handleUpdateProfile = async () => {
+    try {
+      setLoading(true);
+      const targetEmail = formData.email.toLowerCase().trim();
+      
+      // Menggunakan .upsert agar aman menangani baris data baru maupun pembaharuan data lama
+      const { error } = await supabase
+        .from("profiles")
+        .upsert({
+          email: targetEmail,             // Kunci pengikat data utama
+          full_name: formData.username,   // Menyimpan string nama baru
+          phone_number: formData.phone,   // Menyimpan string nomor telepon baru
+          user_type: "pelanggan"
+        }, { 
+          onConflict: 'email'             // Jika string email bentrok, lakukan operasi UPDATE
+        });
+
+      if (error) throw error;
+
+      setIsEditUsername(false);
+      setIsEditPhone(false);
+      setSuccessMessage("Perubahan Berhasil Disimpan");
+      setShowSuccessModal(true);
+    } catch (err) {
+      console.error("Gagal mengupdate profil:", err);
+      alert("Gagal menyimpan perubahan ke database. Periksa koneksi jaringan Anda.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 3. Fungsi Update Password Ke Supabase Auth
+  const handleUpdatePassword = async () => {
     let tempErrors = { old: "", new: "", confirm: "" };
     let isValid = true;
 
-    // Validasi Password Lama (Wajib diisi)
     if (!passwords.old) {
       tempErrors.old = "Password lama wajib diisi";
       isValid = false;
@@ -35,7 +121,6 @@ export default function ProfilePage() {
       isValid = false;
     }
 
-    // Validasi Password Baru (Wajib diisi & Digit)
     if (!passwords.new) {
       tempErrors.new = "Password baru wajib diisi";
       isValid = false;
@@ -44,47 +129,57 @@ export default function ProfilePage() {
       isValid = false;
     }
 
-    // Validasi Konfirmasi (Wajib diisi & Cocok)
     if (!passwords.confirm) {
       tempErrors.confirm = "Konfirmasi password wajib diisi";
       isValid = false;
     } else if (passwords.confirm !== passwords.new) {
-      tempErrors.confirm = "Password tidak valid"; // Sesuai desain Anda jika tidak cocok
+      tempErrors.confirm = "Password tidak valid";
       isValid = false;
     }
 
     setErrors(tempErrors);
 
     if (isValid) {
-      setSuccessMessage("Password Berhasil Disimpan");
-      setShowSuccessModal(true);
-      setPasswords({ old: "", new: "", confirm: "" });
-      setErrors({ old: "", new: "", confirm: "" });
+      try {
+        const { error } = await supabase.auth.updateUser({
+          password: passwords.new
+        });
+
+        if (error) throw error;
+
+        setSuccessMessage("Password Berhasil Disimpan");
+        setShowSuccessModal(true);
+        setPasswords({ old: "", new: "", confirm: "" });
+        setErrors({ old: "", new: "", confirm: "" });
+      } catch (err) {
+        console.error("Gagal memperbarui password:", err);
+        alert("Gagal memperbarui password auth.");
+      }
     }
   };
+
+  // 4. Fungsi Logout
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/auth/login/pelanggan");
+  };
+
+  if (loading && formData.email === "") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FFF8]">
+        <p className="text-sm font-medium text-gray-500 animate-pulse">Memuat informasi profil...</p>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#F8FFF8] pb-20">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      {/* NAVBAR
-      <header className="h-16 bg-white flex items-center px-6 sticky top-0 z-30 justify-between border-b border-gray-50">
-        <button onClick={() => setIsSidebarOpen(true)} className="w-10 h-10 rounded-lg bg-gray-50 flex flex-col items-center justify-center gap-[3px]">
-          <div className="w-5 h-[2px] bg-black"></div>
-          <div className="w-5 h-[2px] bg-black"></div>
-          <div className="w-5 h-[2px] bg-black"></div>
-        </button>
-        <div className="flex items-center gap-2">
-          <span className="text-xl">🐝</span>
-          <h1 className="text-lg font-bold">Nadebee <span className="text-[#4CAF50]">Express</span></h1>
-        </div>
-        <div className="w-10"></div>
-      </header> */}
-
       <section className="flex flex-col items-center pt-12 px-6 max-w-xl mx-auto">
         <div className="text-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Profil Saya</h2>
-          <p className="text-gray-400 text-sm">Kelola inforomasi akunmu</p>
+          <p className="text-gray-400 text-sm">Kelola informasi akunmu</p>
         </div>
 
         {/* AVATAR */}
@@ -92,15 +187,17 @@ export default function ProfilePage() {
           <div className="w-16 h-16 rounded-full border border-[#4CAF50] flex items-center justify-center bg-white mb-2">
             <User className="text-[#4CAF50]" size={28} />
           </div>
-          <h3 className="text-lg font-bold">Natalie Pratistha</h3>
-          <p className="text-gray-400 text-xs">Bergabung sejak 2026</p>
+          <h3 className="text-lg font-bold">{formData.username || "Pelanggan Nadebee"}</h3>
+          <p className="text-gray-400 text-xs">Akun Terverifikasi</p>
         </div>
 
         {/* FORM PROFIL */}
         <div className="w-full bg-white border border-gray-200 rounded-[25px] p-6 shadow-sm mb-6">
           <div className="space-y-4">
             <div>
-              <label className="flex items-center gap-2 text-gray-500 text-xs font-bold mb-1 ml-1"><User size={12}/> Username</label>
+              <label className="flex items-center gap-2 text-gray-500 text-xs font-bold mb-1 ml-1">
+                <User size={12}/> Username
+              </label>
               <div className="relative">
                 <input 
                   value={formData.username}
@@ -115,7 +212,9 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="flex items-center gap-2 text-gray-500 text-xs font-bold mb-1 ml-1"><Phone size={12}/> Nomor Telepon</label>
+              <label className="flex items-center gap-2 text-gray-500 text-xs font-bold mb-1 ml-1">
+                <Phone size={12}/> Nomor Telepon
+              </label>
               <div className="relative">
                 <input 
                   value={formData.phone}
@@ -130,11 +229,22 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="flex items-center gap-2 text-gray-500 text-xs font-bold mb-1 ml-1"><Mail size={12}/> Email</label>
-              <input disabled value={formData.email} className="w-full px-4 py-3 bg-[#E8F5E9] border border-[#4CAF50] rounded-xl text-sm text-gray-600" />
+              <label className="flex items-center gap-2 text-gray-500 text-xs font-bold mb-1 ml-1">
+                <Mail size={12}/> Email
+              </label>
+              <input 
+                disabled 
+                value={formData.email} 
+                className="w-full px-4 py-3 bg-[#E8F5E9] border border-[#4CAF50] rounded-xl text-sm text-gray-600 cursor-not-allowed" 
+              />
             </div>
 
-            <button onClick={() => {setSuccessMessage("Perubahan Berhasil Disimpan"); setShowSuccessModal(true);}} className="w-full bg-[#4CAF50] text-white font-bold py-3.5 rounded-xl mt-2">Simpan Profil</button>
+            <button 
+              onClick={handleUpdateProfile} 
+              className="w-full bg-[#4CAF50] text-white font-bold py-3.5 rounded-xl mt-2 hover:bg-[#43A047] transition-colors"
+            >
+              Simpan Profil
+            </button>
           </div>
         </div>
 
@@ -188,7 +298,7 @@ export default function ProfilePage() {
 
               <button 
                 onClick={handleUpdatePassword}
-                className="w-full border border-gray-300 text-gray-800 font-bold py-3 rounded-full mt-2"
+                className="w-full border border-gray-300 text-gray-800 font-bold py-3 rounded-full mt-2 hover:bg-gray-50 transition-colors"
               >
                 Simpan Perubahan Password
               </button>
@@ -196,7 +306,10 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <button className="w-full border border-red-200 bg-white text-red-500 font-bold py-3 rounded-xl flex items-center justify-center gap-2">
+        <button 
+          onClick={handleLogout}
+          className="w-full border border-red-200 bg-white text-red-500 font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-red-50 transition-colors"
+        >
           <LogOut size={18} /> Logout
         </button>
       </section>

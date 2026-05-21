@@ -4,12 +4,13 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import LogoNadebee from "@/public/logo.png";
-import { Truck, MapPin, CheckCircle, AlertCircle } from "lucide-react"; // Tambah AlertCircle
+import { Truck, MapPin, CheckCircle, AlertCircle, Search } from "lucide-react";
 
 export default function PelangganHomePage() {
   const [mounted, setMounted] = useState(false);
   const [time, setTime] = useState(new Date());
-  const [isError, setIsError] = useState(false); // Tambah state ini (default false)
+  const [resiInput, setResiInput] = useState(""); // State untuk menampung ketikan resi
+  const [isError, setIsError] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -24,6 +25,21 @@ export default function PelangganHomePage() {
   const jam = time.toLocaleTimeString("id-ID", { 
     hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" 
   }).replace(/:/g, ".");
+
+  // Fungsi simulasi pencarian resi cepat
+  const handleCariResi = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resiInput.trim()) return;
+
+    // Simulasi: Jika resi bukan format NDB yang kita buat di database, munculkan error figma
+    if (!resiInput.toUpperCase().startsWith("NDB")) {
+      setIsError(true);
+    } else {
+      setIsError(false);
+      // Jika formatnya benar, langsung arahkan ke halaman tracking internal
+      window.location.href = `/auth/dashboard/pelanggan/tracking?resi=${resiInput.toUpperCase()}`;
+    }
+  };
 
   if (!mounted) return null;
 
@@ -56,13 +72,35 @@ export default function PelangganHomePage() {
         </h2>
       </div>
 
-      {/* 3. TOMBOL AKSI */}
-      <div className="w-full max-w-[340px] space-y-4 mb-20">
+      {/* ⚡ BARU: FORM TRACING INSTAN (Menghubungkan Fitur Error) */}
+      <form onSubmit={handleCariResi} className="w-full max-w-[400px] mb-8 relative">
+        <div className="relative flex items-center">
+          <input 
+            type="text"
+            placeholder="Masukkan nomor resi ekspedisi..."
+            value={resiInput}
+            onChange={(e) => {
+              setResiInput(e.target.value);
+              if (isError) setIsError(false); // Sembunyikan error saat user mulai mengetik ulang
+            }}
+            className="w-full h-14 pl-5 pr-14 rounded-full border-2 border-gray-100 shadow-sm bg-white font-medium text-sm focus:outline-none focus:border-[#4CAF50] transition-colors"
+          />
+          <button 
+            type="submit"
+            className="absolute right-2 w-10 h-10 bg-[#4CAF50] rounded-full flex items-center justify-center text-white hover:bg-[#43A047] transition-colors"
+          >
+            <Search size={18} />
+          </button>
+        </div>
+      </form>
+
+      {/* 3. TOMBOL AKSI UTAMA */}
+      <div className="w-full max-w-[340px] space-y-4 mb-16">
         <Link 
           href="/auth/dashboard/pelanggan/tracking" 
           className="flex items-center justify-center w-full h-16 rounded-[24px] bg-[#4CAF50] text-white font-black text-lg shadow-lg shadow-green-100 hover:bg-[#43A047] transition-all"
         >
-          Lacak Paket
+          Lacak Paket Utama
         </Link>
         <Link 
           href="/auth/dashboard/pelanggan/request-pickup" 
@@ -71,6 +109,25 @@ export default function PelangganHomePage() {
           Request Pickup
         </Link>
       </div>
+
+      {/* TAMPILAN ERROR FIGMA (DIPICU OLEH FORM DI ATAS) */}
+      {isError && (
+        <div className="w-full max-w-2xl mx-auto mb-16 animate-in fade-in zoom-in duration-300">
+          <div className="bg-white rounded-[32px] p-1 border-2 border-red-400 shadow-xl shadow-red-100">
+            <div className="bg-white rounded-[28px] border border-red-400 p-16 flex flex-col items-center text-center">
+              <div className="w-14 h-14 bg-red-500 text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-red-200">
+                <AlertCircle size={32} strokeWidth={3} />
+              </div>
+              <h3 className="text-red-500 font-black text-[18px] mb-2 uppercase tracking-wide">
+                Nomor resi tidak ditemukan
+              </h3>
+              <p className="text-gray-400 text-[15px] font-medium">
+                Coba cek lagi ya! Masukkan nomor dengan awalan 'NDB'
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 4. GRID CARD FITUR */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-16">
@@ -104,25 +161,6 @@ export default function PelangganHomePage() {
           </p>
         </div>
       </div>
-
-      {/* TAMPILAN ERROR FIGMA */}
-      {isError && (
-        <div className="w-full max-w-2xl mx-auto mb-16 animate-in fade-in zoom-in duration-300">
-          <div className="bg-white rounded-[32px] p-1 border-2 border-red-400 shadow-xl shadow-red-100">
-            <div className="bg-white rounded-[28px] border border-red-400 p-16 flex flex-col items-center text-center">
-              <div className="w-14 h-14 bg-red-500 text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-red-200">
-                <AlertCircle size={32} strokeWidth={3} />
-              </div>
-              <h3 className="text-red-500 font-black text-[18px] mb-2 uppercase tracking-wide">
-                Nomor resi tidak ditemukan
-              </h3>
-              <p className="text-gray-400 text-[15px] font-medium">
-                Coba cek lagi ya!
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 5. TIPS BOX */}
       <div className="w-full max-w-4xl bg-[#D7ECD9] p-8 rounded-[40px] border border-white text-center shadow-sm">
