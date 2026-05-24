@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Image from "next/image";
@@ -7,17 +7,52 @@ import Image from "next/image";
 export default function KonfirmasiPickupPage() {
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
-  // State untuk menyimpan pilihan metode pembayaran
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [error, setError] = useState("");
+  
+  // State untuk data dinamis
+  const [pickupData, setPickupData] = useState<any>(null);
+  const [totalOngkir, setTotalOngkir] = useState<number>(0);
+  const [mounted, setMounted] = useState(false);
 
-  // Update Halaman Konfirmasi (Logika Navigasi)
+  useEffect(() => {
+    setMounted(true);
+    
+    // 1. Ambil data sementara dari halaman form
+    const savedData = sessionStorage.getItem("pickupData");
+    if (savedData) {
+      const parsedData = JSON.parse(savedData);
+      setPickupData(parsedData);
+
+      // 2. Logika Hitung Harga Dasar berdasarkan Wilayah Tujuan
+      let basePrice = 20000;
+      switch (parsedData.destination) {
+        case "Sleman": basePrice = 20000; break;
+        case "Kota Yogyakarta": basePrice = 23000; break;
+        case "Bantul": basePrice = 30000; break;
+        case "Kulon Progo": basePrice = 40000; break;
+        case "Gunung Kidul": basePrice = 50000; break;
+      }
+
+      // 3. Logika Hitung Faktor Pengali berdasarkan Prediksi Berat Barang
+      let multiplier = 1.0; // Default untuk < 1 kg
+      if (parsedData.weight === "1-5 kg") multiplier = 1.25; // Kenaikan 25%
+      if (parsedData.weight === "5-10 kg") multiplier = 1.50; // Kenaikan 50%
+
+      // 4. Set hasil kalkulasi akhir ke state
+      setTotalOngkir(basePrice * multiplier);
+    }
+  }, []);
+
   const handlePayment = () => {
     if (!paymentMethod) {
       setError("Metode pembayaran wajib dipilih");
       return;
     }
+
+    // Titipkan metode pembayaran dan total ongkir akhir ke sessionStorage
+    sessionStorage.setItem("paymentMethod", paymentMethod);
+    sessionStorage.setItem("totalOngkir", totalOngkir.toString());
 
     if (paymentMethod === "Tunai") {
       router.push("/auth/dashboard/pelanggan/request-pickup/pembayaran-tunai");
@@ -25,6 +60,9 @@ export default function KonfirmasiPickupPage() {
       router.push("/auth/dashboard/pelanggan/request-pickup/pembayaran-nontunai");
     }
   };
+
+  // Mencegah error hydration Next.js sebelum data sessionStorage termuat sepenuhnya
+  if (!mounted || !pickupData) return null;
 
   return (
     <main className="min-h-screen bg-[#F4F9F4] font-sans pb-20">
@@ -37,9 +75,9 @@ export default function KonfirmasiPickupPage() {
         </div>
 
         {/* Pembungkus Utama Dua Kolom */}
-        <div className="flex flex-col lg:flex-row items-center lg:items-center justify-between gap-12 w-full">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-12 w-full">
           
-          {/* Sisi Kiri: Ringkasan Card (Ukuran font, radius, & warna tetap asli milikmu) */}
+          {/* Sisi Kiri: Ringkasan Card */}
           <div className="w-full lg:w-[60%]">
             <div className="bg-white border border-green-400 rounded-[30px] p-8 shadow-sm">
               <h3 className="text-xl font-bold mb-6">Ringkasan</h3>
@@ -47,19 +85,23 @@ export default function KonfirmasiPickupPage() {
               <div className="space-y-4 text-[15px] border-b border-gray-100 pb-6 mb-6">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Pengirim → Penerima</span>
-                  <span className="text-[#4CAF50] font-semibold text-right">Siti Rahayu → Farhan Rizki</span>
+                  <span className="text-[#4CAF50] font-semibold text-right">
+                    {pickupData.senderName} → {pickupData.receiverName}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Alamat Tujuan</span>
-                  <span className="text-[#4CAF50] font-semibold text-right">Jl.Babarsari No.113</span>
+                  <span className="text-[#4CAF50] font-semibold text-right truncate max-w-[250px]">
+                    {pickupData.receiverAddress}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Jenis Barang</span>
-                  <span className="text-[#4CAF50] font-semibold">Dokumen</span>
+                  <span className="text-[#4CAF50] font-semibold">{pickupData.itemType}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Berat</span>
-                  <span className="text-[#4CAF50] font-semibold">1-5 kg</span>
+                  <span className="text-[#4CAF50] font-semibold">{pickupData.weight}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Pembayaran</span>
@@ -69,7 +111,9 @@ export default function KonfirmasiPickupPage() {
 
               <div className="flex justify-between items-center mb-8">
                 <span className="font-bold text-lg">Total Ongkir</span>
-                <span className="font-bold text-lg text-[#4CAF50]">Rp. 20.000</span>
+                <span className="font-bold text-lg text-[#4CAF50]">
+                  Rp. {totalOngkir.toLocaleString('id-ID')}
+                </span>
               </div>
 
               <div className="space-y-2 mb-8">
@@ -107,14 +151,13 @@ export default function KonfirmasiPickupPage() {
                 </button>
               </div>
               
-              {/* Tampilan Error jika belum pilih metode */}
               {error && (
                 <p className="text-red-500 italic text-[12px] mt-2 ml-1">{error}</p>
               )}
             </div>
           </div>
 
-          {/* Sisi Kanan: Gambar Ilustrasi (Dibuat center vertikal & proporsional menempel ke kanan desktop) */}
+          {/* Sisi Kanan: Gambar Ilustrasi */}
           <div className="w-full lg:w-[40%] flex justify-center lg:justify-end items-center min-h-[350px]">
             <div className="relative w-full max-w-[400px] lg:max-w-[440px] aspect-square flex items-center justify-center">
               <Image 
@@ -127,7 +170,7 @@ export default function KonfirmasiPickupPage() {
             </div>
           </div>
 
-        </div> {/* Penutupan tag pembungkus kolom yang tadinya hilang */}
+        </div>
 
         {/* Action Button Bagian Bawah */}
         <div className="mt-12">

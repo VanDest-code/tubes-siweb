@@ -32,8 +32,8 @@ export default function RequestPickupPage() {
 
     // Jika tidak ada error, pindah ke halaman pilih kurir
     if (Object.keys(newErrors).length === 0) {
-      // Kamu bisa mengirim data via query params atau state management jika perlu
-      router.push("/auth/dashboard/pelanggan/request-pickup/pilih-kurir");
+    sessionStorage.setItem("pickupData", JSON.stringify(formData));
+    router.push("/auth/dashboard/pelanggan/request-pickup/pilih-kurir");
     }
   };
 
