@@ -46,6 +46,9 @@ export default function LoginPelanggan() {
     }
   };
 
+  // Logika untuk mengambil nama dari email (contoh: natalie@gmail.com -> Natalie)
+  const namaPelanggan = email ? email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1) : "";
+
   return (
     <main className="min-h-screen bg-nadebee-green flex flex-col items-center relative font-poppins">
       
@@ -126,7 +129,7 @@ export default function LoginPelanggan() {
               ✓
             </div>
             <h3 className="font-bold text-gray-800 text-sm md:text-base mb-1">Login Berhasil.</h3>
-            <p className="text-gray-500 text-[11px] md:text-sm mb-6 text-center">Selamat datang!</p>
+            <p className="text-gray-500 text-[11px] md:text-sm mb-6 text-center">Selamat datang {namaPelanggan}!</p>
             <Link href="/auth/dashboard/pelanggan" className="w-full bg-nadebee-primary text-white font-bold py-3 rounded-xl text-center shadow-md text-sm">
               Oke
             </Link>

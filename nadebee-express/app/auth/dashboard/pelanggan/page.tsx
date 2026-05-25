@@ -5,16 +5,35 @@ import Image from "next/image";
 import Link from "next/link";
 import LogoNadebee from "@/public/logo.png";
 import { Truck, MapPin, CheckCircle, AlertCircle, Search } from "lucide-react";
+import { supabase } from "@/lib/supabase"; // <-- TAMBAHAN: Import koneksi supabase
 
 export default function PelangganHomePage() {
   const [mounted, setMounted] = useState(false);
   const [time, setTime] = useState(new Date());
-  const [resiInput, setResiInput] = useState(""); // State untuk menampung ketikan resi
+  const [resiInput, setResiInput] = useState(""); 
   const [isError, setIsError] = useState(false);
+  
+  // <-- TAMBAHAN 1: Buat wadah state untuk menyimpan nama pelanggan
+  const [namaPelanggan, setNamaPelanggan] = useState("");
 
   useEffect(() => {
     setMounted(true);
     const timer = setInterval(() => setTime(new Date()), 1000);
+    
+    // <-- TAMBAHAN 2: Fungsi untuk menarik data user yang sedang login dari Supabase
+    const dapatkanUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user && user.email) {
+        // Ambil nama dari email (contoh: natalie@gmail.com -> Natalie)
+        const emailPotong = user.email.split('@')[0];
+        const namaRapi = emailPotong.charAt(0).toUpperCase() + emailPotong.slice(1);
+        setNamaPelanggan(namaRapi);
+      }
+    };
+    
+    dapatkanUser(); // Panggil fungsinya saat halaman pertama kali dibuka
+
     return () => clearInterval(timer);
   }, []);
 
@@ -26,17 +45,14 @@ export default function PelangganHomePage() {
     hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" 
   }).replace(/:/g, ".");
 
-  // Fungsi simulasi pencarian resi cepat
   const handleCariResi = (e: React.FormEvent) => {
     e.preventDefault();
     if (!resiInput.trim()) return;
 
-    // Simulasi: Jika resi bukan format NDB yang kita buat di database, munculkan error figma
     if (!resiInput.toUpperCase().startsWith("NDB")) {
       setIsError(true);
     } else {
       setIsError(false);
-      // Jika formatnya benar, langsung arahkan ke halaman tracking internal
       window.location.href = `/auth/dashboard/pelanggan/tracking?resi=${resiInput.toUpperCase()}`;
     }
   };
@@ -68,31 +84,10 @@ export default function PelangganHomePage() {
           />
         </div>
         <h2 className="text-[26px] font-black text-gray-900 tracking-tight">
-          Halo! Selamat datang..
+          {/* <-- TAMBAHAN 3: Ubah teks agar variabel nama ikut ter-render (dengan fallback jika kosong) */}
+          Halo! Selamat datang{namaPelanggan ? ` ${namaPelanggan}` : ""}..
         </h2>
       </div>
-
-      {/* ⚡ BARU: FORM TRACING INSTAN (Menghubungkan Fitur Error)
-      <form onSubmit={handleCariResi} className="w-full max-w-[400px] mb-8 relative">
-        <div className="relative flex items-center">
-          <input 
-            type="text"
-            placeholder="Masukkan nomor resi ekspedisi..."
-            value={resiInput}
-            onChange={(e) => {
-              setResiInput(e.target.value);
-              if (isError) setIsError(false); // Sembunyikan error saat user mulai mengetik ulang
-            }}
-            className="w-full h-14 pl-5 pr-14 rounded-full border-2 border-gray-100 shadow-sm bg-white font-medium text-sm focus:outline-none focus:border-[#4CAF50] transition-colors"
-          />
-          <button 
-            type="submit"
-            className="absolute right-2 w-10 h-10 bg-[#4CAF50] rounded-full flex items-center justify-center text-white hover:bg-[#43A047] transition-colors"
-          >
-            <Search size={18} />
-          </button>
-        </div>
-      </form> */}
 
       {/* 3. TOMBOL AKSI UTAMA */}
       <div className="w-full max-w-[340px] space-y-4 mb-16">

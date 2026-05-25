@@ -1,147 +1,204 @@
 "use client";
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import LogoNadebee from "@/public/logo.png";
 
 export default function RegisterPelanggan() {
+  const router = useRouter(); 
   const [formData, setFormData] = useState({
-    nama: '',
+    username: '',
     email: '',
     nomorTelepon: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '', // <-- Sudah dikembalikan!
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [registerError, setRegisterError] = useState(""); 
 
   const validate = () => {
     let newErrors: Record<string, string> = {};
 
-    // Validasi Nama
-    if (!formData.nama) {
-      newErrors.nama = "Nama wajib diisi";
-    } else if (formData.nama.length > 6) {
-      newErrors.nama = "Maks. 6 karakter";
-    }
-
-    // Validasi Email
+    if (!formData.username) newErrors.username = "Username wajib diisi";
     if (!formData.email) {
       newErrors.email = "Email wajib diisi";
     } else if (!formData.email.includes('@')) {
       newErrors.email = "Gunakan format Email! cth: pratisthanatalie@gmail.com";
     }
-
-    // Validasi Nomor Telepon
     if (!formData.nomorTelepon) {
       newErrors.nomorTelepon = "No.Telepon wajib diisi";
     } else if (!/^\d+$/.test(formData.nomorTelepon)) {
       newErrors.nomorTelepon = "No.Telepon harus angka";
     }
-
-    // Validasi Password (Min 8 & Maks 12 digit)
     if (!formData.password) {
       newErrors.password = "Password wajib diisi";
     } else if (formData.password.length < 8 || formData.password.length > 12) {
       newErrors.password = "Min. 8 digit & Maks. 12 digit";
     }
-
-    // Validasi Konfirmasi Password
-    if (formData.confirmPassword !== formData.password) {
-      newErrors.confirmPassword = "Password tidak valid";
+    
+    // <-- Validasi Konfirmasi Password dikembalikan
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = "Konfirmasi Password wajib diisi";
+    } else if (formData.confirmPassword !== formData.password) {
+      newErrors.confirmPassword = "Password tidak cocok";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setRegisterError(""); 
+
     if (validate()) {
-      console.log("Registrasi Berhasil", formData);
-      // Lanjut ke logika sukses atau redirect
+      setLoading(true);
+      
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              username: formData.username,
+              phone: formData.nomorTelepon,
+            }
+          }
+        });
+
+        if (error) {
+          setRegisterError(error.message);
+        } else {
+          alert("Registrasi Berhasil! Silakan login.");
+          router.push("/auth/login"); 
+        }
+      } catch (err) {
+        setRegisterError("Terjadi kesalahan sistem. Coba lagi nanti.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   return (
-    <main className="min-h-screen bg-nadebee-green flex flex-col items-center px-6 py-10 font-poppins">
-      <Link href="/auth/login/pelanggan" className="self-start text-gray-400 text-sm mb-6">← Kembali</Link>
+    <main className="min-h-screen bg-[#F4F9F4] flex flex-col items-center relative font-poppins pb-16">
+      
+      {/* --- HEADER BAR --- */}
+      <header className="w-full bg-white border-b border-gray-100 px-4 md:px-8 h-[80px] flex items-center justify-between sticky top-0 z-50">
+        <Link href="/auth/login" className="text-gray-400 hover:text-gray-600 transition-all font-medium italic text-xs md:text-sm flex items-center gap-2">
+          ← Kembali
+        </Link>
+        
+        <div className="flex items-center gap-2">
+           <Image src={LogoNadebee} alt="Nadebee Icon" width={28} height={28} className="object-contain" />
+           <h1 className="text-sm md:text-lg font-black text-gray-900 tracking-tighter">
+             Nadebee <span className="text-green-500">Express</span>
+           </h1>
+        </div>
 
-      <div className="text-center mb-6">
-        <h1 className="text-xl font-bold text-gray-800">Daftar Akun Baru</h1>
-        <p className="text-[10px] text-gray-500 max-w-50 mx-auto mt-1">
-          Daftar sekarang dan mulai pengalaman menarikmu bersama Nadebee Express!
-        </p>
+        <div className="w-[60px] md:w-[80px]"></div>
+      </header>
+
+      {/* --- CONTENT AREA --- */}
+      <div className="flex flex-col items-center w-full max-w-lg px-6 pt-12">
+        
+        <div className="text-center mb-10">
+          <h1 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">
+            Daftar Akun Baru
+          </h1>
+          <p className="text-[12px] md:text-sm text-gray-500 max-w-xs mx-auto mt-2 leading-relaxed">
+            Daftar sekarang dan mulai pengalaman menarikmu bersama Nadebee Express!
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="w-full bg-white p-10 rounded-[40px] border border-green-400 shadow-sm space-y-6">
+          
+          {registerError && (
+            <div className="bg-red-50 border border-red-200 text-red-500 text-xs p-3 rounded-xl text-center font-medium">
+              Gagal mendaftar: Email sudah digunakan atau tidak valid.
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold text-gray-800 mb-2">Username</label>
+            <input 
+              type="text"
+              placeholder="Masukkan username"
+              className={`w-full bg-[#EBF5EB] border ${errors.username ? 'border-red-400' : 'border-transparent'} rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-green-500 transition-colors placeholder:text-gray-400`}
+              value={formData.username}
+              onChange={(e) => setFormData({...formData, username: e.target.value})}
+            />
+            {errors.username && <p className="text-[10px] text-red-500 mt-1 italic">{errors.username}</p>}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-800 mb-2">Email</label>
+            <input 
+              type="email"
+              placeholder="Masukkan Email"
+              className={`w-full bg-[#EBF5EB] border ${errors.email ? 'border-red-400' : 'border-transparent'} rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-green-500 transition-colors placeholder:text-gray-400`}
+              value={formData.email}
+              onChange={(e) => setFormData({...formData, email: e.target.value})}
+            />
+            {errors.email && <p className="text-[10px] text-red-500 mt-1 italic">{errors.email}</p>}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-800 mb-2">Nomor Telepon</label>
+            <input 
+              type="text"
+              placeholder="Masukkan Nomor Telepon"
+              className={`w-full bg-[#EBF5EB] border ${errors.nomorTelepon ? 'border-red-400' : 'border-transparent'} rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-green-500 transition-colors placeholder:text-gray-400`}
+              value={formData.nomorTelepon}
+              onChange={(e) => setFormData({...formData, nomorTelepon: e.target.value})}
+            />
+            {errors.nomorTelepon && <p className="text-[10px] text-red-500 mt-1 italic">{errors.nomorTelepon}</p>}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-800 mb-2">Password</label>
+            <input 
+              type="password"
+              placeholder="Masukkan Password"
+              className={`w-full bg-[#EBF5EB] border ${errors.password ? 'border-red-400' : 'border-transparent'} rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-green-500 transition-colors placeholder:text-gray-400`}
+              value={formData.password}
+              onChange={(e) => setFormData({...formData, password: e.target.value})}
+            />
+            {errors.password && <p className="text-[10px] text-red-500 mt-1 italic">{errors.password}</p>}
+          </div>
+
+          {/* <-- Kolom Konfirmasi Password Dikembalikan --> */}
+          <div>
+            <label className="block text-xs font-bold text-gray-800 mb-2">Konfirmasi Password</label>
+            <input 
+              type="password"
+              placeholder="Ulangi Password"
+              className={`w-full bg-[#EBF5EB] border ${errors.confirmPassword ? 'border-red-400' : 'border-transparent'} rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-green-500 transition-colors placeholder:text-gray-400`}
+              value={formData.confirmPassword}
+              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+            />
+            {errors.confirmPassword && <p className="text-[10px] text-red-500 mt-1 italic">{errors.confirmPassword}</p>}
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={loading}
+            className={`flex items-center justify-center w-full h-14 rounded-2xl bg-[#4CAF50] text-white font-black text-lg shadow-lg hover:bg-[#43A047] transition-all active:scale-[0.98] mt-8 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {loading ? 'Memproses...' : 'Daftar'}
+          </button>
+        </form>
+
       </div>
 
-      <form onSubmit={handleSubmit} className="w-full max-w-sm bg-white p-8 rounded-4xl border border-green-100 shadow-sm space-y-4">
-        {/* Input Nama */}
-        <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1">Nama</label>
-          <input 
-            type="text"
-            className={`w-full bg-green-50/50 border ${errors.nama ? 'border-red-400' : 'border-gray-100'} rounded-xl py-2 px-4 text-sm focus:outline-none`}
-            value={formData.nama}
-            onChange={(e) => setFormData({...formData, nama: e.target.value})}
-          />
-          {errors.nama && <p className="text-[10px] text-red-500 mt-1 italic">{errors.nama}</p>}
-        </div>
-
-        {/* Input Email */}
-        <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1">Email</label>
-          <input 
-            type="text"
-            className={`w-full bg-green-50/50 border ${errors.email ? 'border-red-400' : 'border-gray-100'} rounded-xl py-2 px-4 text-sm focus:outline-none`}
-            value={formData.email}
-            onChange={(e) => setFormData({...formData, email: e.target.value})}
-          />
-          {errors.email && <p className="text-[10px] text-red-500 mt-1 italic">{errors.email}</p>}
-        </div>
-
-        {/* Input Nomor Telepon */}
-        <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1">Nomor Telepon</label>
-          <input 
-            type="text"
-            className={`w-full bg-green-50/50 border ${errors.nomorTelepon ? 'border-red-400' : 'border-gray-100'} rounded-xl py-2 px-4 text-sm focus:outline-none`}
-            value={formData.nomorTelepon}
-            onChange={(e) => setFormData({...formData, nomorTelepon: e.target.value})}
-          />
-          {errors.nomorTelepon && <p className="text-[10px] text-red-500 mt-1 italic">{errors.nomorTelepon}</p>}
-        </div>
-
-        {/* Input Password */}
-        <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1">Password</label>
-          <input 
-            type="password"
-            className={`w-full bg-green-50/50 border ${errors.password ? 'border-red-400' : 'border-gray-100'} rounded-xl py-2 px-4 text-sm focus:outline-none`}
-            value={formData.password}
-            onChange={(e) => setFormData({...formData, password: e.target.value})}
-          />
-          {errors.password && <p className="text-[10px] text-red-500 mt-1 italic">{errors.password}</p>}
-        </div>
-
-        {/* Input Konfirmasi Password */}
-        <div>
-          <label className="block text-xs font-bold text-gray-700 mb-1">Konfirmasi Password</label>
-          <input 
-            type="password"
-            placeholder="ulangi password"
-            className={`w-full bg-green-50/50 border ${errors.confirmPassword ? 'border-red-400' : 'border-gray-100'} rounded-xl py-2 px-4 text-sm focus:outline-none`}
-            value={formData.confirmPassword}
-            onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-          />
-          {errors.confirmPassword && <p className="text-[10px] text-red-500 mt-1 italic">{errors.confirmPassword}</p>}
-        </div>
-
-        <button type="submit" className="w-full bg-nadebee-primary hover:bg-green-600 text-white font-bold py-3 rounded-xl transition-all shadow-md mt-4">
-          Daftar
-        </button>
-      </form>
-
-      <p className="mt-6 text-[10px] text-gray-500">
-        Sudah punya akun? <Link href="/auth/login/pelanggan" className="text-nadebee-primary font-bold">Login</Link>
+      <p className="text-center text-gray-600 text-sm mt-4">
+        Sudah punya akun? <Link href="/auth/login" className="text-[#4CAF50] font-bold hover:underline">Login</Link>
       </p>
+
     </main>
   );
 }
