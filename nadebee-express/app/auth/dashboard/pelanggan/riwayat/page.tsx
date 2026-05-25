@@ -2,88 +2,50 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-
-// Data riwayat lengkap berjumlah 9 data dummy untuk simulasi 3 halaman penuh
-const dataRiwayatAwal = [
-  {
-    id: "NDB009",
-    status: "Dalam Perjalanan",
-    rute: "Siti Rahayu → Happy Asmara",
-    detail: "Bantul | Makanan | <1 Kg",
-    tanggal: "2025-09-12"
-  },
-  {
-    id: "NDB008",
-    status: "Selesai",
-    rute: "Siti Rahayu → Gading Marten",
-    detail: "Sleman | Lainnya | 5-10 Kg",
-    tanggal: "2025-09-07"
-  },
-  {
-    id: "NDB007",
-    status: "Menunggu Kurir",
-    rute: "Siti Rahayu → Dewi Sartika",
-    detail: "Kota Yogyakarta | Dokumen | <1 Kg",
-    tanggal: "2025-09-14"
-  },
-  {
-    id: "NDB006",
-    status: "Dalam Perjalanan",
-    rute: "Siti Rahayu → Kevin Sanjaya",
-    detail: "Kulon Progo | Barang Elektronik | 1-5 Kg",
-    tanggal: "2025-09-11"
-  },
-  {
-    id: "NDB005",
-    status: "Selesai",
-    rute: "Siti Rahayu → Rian Jombang",
-    detail: "Kota Yogyakarta | Lainnya | 5-10 Kg",
-    tanggal: "2025-09-08"
-  },
-  {
-    id: "NDB004",
-    status: "Menunggu Kurir",
-    rute: "Siti Rahayu → Larasati",
-    detail: "Gunung Kidul | Makanan | 1-5 Kg",
-    tanggal: "2025-09-14"
-  },
-  {
-    id: "NDB003",
-    status: "Selesai",
-    rute: "Siti Rahayu → Farhan Rizki",
-    detail: "Sleman | Dokumen | 1-5 Kg",
-    tanggal: "2025-09-09"
-  },
-  {
-    id: "NDB002",
-    status: "Dalam Perjalanan",
-    rute: "Siti Rahayu → Ahmad Dani",
-    detail: "Magelang | Elektronik | 5-10 Kg",
-    tanggal: "2025-09-10"
-  },
-  {
-    id: "NDB001",
-    status: "Menunggu Kurir",
-    rute: "Siti Rahayu → Yemima",
-    detail: "Bantul | Barang Pecah Belah | 1-5 Kg",
-    tanggal: "2025-09-13"
-  },
-];
+import { supabase } from "@/lib/supabase";
 
 export default function RiwayatPickupPage() {
   const router = useRouter();
+  
+  const [dataRiwayatAwal, setDataRiwayatAwal] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<"Aktif" | "Selesai">("Aktif");
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // ================= LOGIKA UTAMA PAGINATION YANG DIUBAH =================
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 3; // Mengunci data agar maksimal 3 riwayat per halaman
+  const itemsPerPage = 3; 
 
-  // State kontrol dropdown kalender asli milikmu
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
 
-  // Menutup kalender otomatis jika pengguna mengklik di luar area
+  // --- LOGIKA KALENDER DINAMIS ---
+  const today = new Date();
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+  const daysInMonthCount = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const daysInMonth = Array.from({ length: daysInMonthCount }, (_, i) => i + 1);
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(currentYear - 1);
+    } else {
+      setCurrentMonth(currentMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(currentYear + 1);
+    } else {
+      setCurrentMonth(currentMonth + 1);
+    }
+  };
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
@@ -94,28 +56,78 @@ export default function RiwayatPickupPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Logika Filter Pencarian Aktif Berdasarkan Status & Tanggal
+  useEffect(() => {
+    const fetchRiwayat = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user && user.email) {
+          const { data, error } = await supabase
+            .from("shipments")
+            .select("*")
+            .eq("customer_email", user.email)
+            .order("created_at", { ascending: false });
+
+          if (error) throw error;
+          
+          if (data) {
+            const formattedData = data.map((d) => ({
+              id: d.resi_number,
+              status: d.status,
+              rute: `${d.sender_name} → ${d.receiver_name}`,
+              detail: `${d.destination_city} | ${d.item_category} | ${d.weight_range}`,
+              tanggal: d.created_at.split("T")[0] // Ambil YYYY-MM-DD
+            }));
+            setDataRiwayatAwal(formattedData);
+          }
+        }
+      } catch (error) {
+        console.error("Gagal menarik data riwayat:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRiwayat();
+
+    const channel = supabase
+      .channel('live-update-riwayat')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'shipments' },
+        () => { fetchRiwayat(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  const countAktif = dataRiwayatAwal.filter(i => (i.status || "").toLowerCase().trim() !== "selesai").length;
+  const countSelesai = dataRiwayatAwal.filter(i => (i.status || "").toLowerCase().trim() === "selesai").length;
+
   const dataTerfilter = dataRiwayatAwal.filter((item) => {
-    const matchQuery = item.status.toLowerCase().includes(searchQuery.toLowerCase());
+    const dbStatus = (item.status || "").toLowerCase().trim();
+    const isSelesai = dbStatus === "selesai";
+    const matchTab = activeTab === "Aktif" ? !isSelesai : isSelesai;
+    
+    const matchQuery = dbStatus.includes(searchQuery.toLowerCase().trim()) || 
+                       item.id.toLowerCase().includes(searchQuery.toLowerCase().trim());
+                       
     const matchDate = selectedDate ? item.tanggal === selectedDate : true;
-    return matchQuery && matchDate;
+    
+    return matchTab && matchQuery && matchDate;
   });
 
-  // ================= LOGIKA PEMOTONGAN DATA PER HALAMAN =================
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const dataPerHalaman = dataTerfilter.slice(indexOfFirstItem, indexOfLastItem); // Memotong data secara dinamis (maks 3 data)
+  const dataPerHalaman = dataTerfilter.slice(indexOfFirstItem, indexOfLastItem); 
 
-  // Menghitung total halaman (9 data / 3 = 3 halaman)
   const totalPages = Math.ceil(dataTerfilter.length / itemsPerPage) || 1;
 
-  const daysInMonth = Array.from({ length: 30 }, (_, i) => i + 1);
-
-  // ================= LOGIKA TOMBOL ANGKA (AKAN MUNCUL 1, 2, 3 SAJA) =================
   const renderPaginationButtons = () => {
     const buttons = [];
     for (let i = 1; i <= totalPages; i++) {
-      buttons.push(i); // Mengisi array angka secara berurutan sesuai totalPages nyata
+      buttons.push(i); 
     }
     return buttons;
   };
@@ -124,31 +136,26 @@ export default function RiwayatPickupPage() {
     <main className="min-h-screen bg-[#F4F9F4] font-sans pb-20">
       <section className="max-w-[1200px] mx-auto pt-12 px-6">
         
-        {/* Tampilan Header Asli */}
         <div className="mb-10">
           <h2 className="text-[28px] font-bold text-[#1A1A1A]">Riwayat Pickup</h2>
           <p className="text-gray-500 text-sm">Berikut adalah semua riwayat permohonan pickup mu</p>
         </div>
 
-        {/* Input Search & Filter Asli */}
-        <div className="space-y-4 mb-8 relative">
+        <div className="space-y-4 mb-6 relative">
           <div className="relative w-full">
-            <span className="absolute inset-y-0 left-4 flex items-center text-gray-400">
-              🔍
-            </span>
+            <span className="absolute inset-y-0 left-4 flex items-center text-gray-400">🔍</span>
             <input
               type="text"
-              placeholder='Cari berdasarkan "status pickup"'
+              placeholder='Cari berdasarkan "status pickup" atau nomor resi'
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
-                setCurrentPage(1); // Reset otomatis ke halaman 1 saat mengetik kata kunci
+                setCurrentPage(1); 
               }}
               className="w-full bg-white border border-gray-300 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none"
             />
           </div>
 
-          {/* Tombol Kontrol Kalender */}
           <div className="relative inline-block" ref={calendarRef}>
             <button 
               type="button"
@@ -158,32 +165,45 @@ export default function RiwayatPickupPage() {
               <span>⏳</span> {selectedDate ? `Tanggal: ${selectedDate}` : "Tanggal"}
             </button>
 
-            {/* Popup Kalender */}
             {isCalendarOpen && (
               <div className="absolute left-0 mt-2 bg-white border border-gray-200 rounded-[24px] p-5 shadow-xl z-50 w-[320px] animate-in fade-in zoom-in-95 duration-150">
+                
+                {/* Header Kalender Dinamis */}
                 <div className="flex justify-between items-center mb-4 px-1">
-                  <button type="button" className="text-gray-600 font-bold hover:bg-gray-100 w-7 h-7 rounded-full text-sm">‹</button>
+                  <button type="button" onClick={handlePrevMonth} className="text-gray-600 font-bold hover:bg-gray-100 w-7 h-7 rounded-full text-sm">‹</button>
                   <div className="flex gap-2">
-                    <select className="text-sm font-bold text-gray-700 bg-gray-50 rounded-lg p-1 outline-none cursor-pointer">
-                      <option>Sep</option>
+                    <select 
+                      value={currentMonth}
+                      onChange={(e) => setCurrentMonth(Number(e.target.value))}
+                      className="text-sm font-bold text-gray-700 bg-gray-50 rounded-lg p-1 outline-none cursor-pointer"
+                    >
+                      {monthNames.map((m, i) => <option key={i} value={i}>{m}</option>)}
                     </select>
-                    <select className="text-sm font-bold text-gray-700 bg-gray-50 rounded-lg p-1 outline-none cursor-pointer">
-                      <option>2025</option>
+                    <select 
+                      value={currentYear}
+                      onChange={(e) => setCurrentYear(Number(e.target.value))}
+                      className="text-sm font-bold text-gray-700 bg-gray-50 rounded-lg p-1 outline-none cursor-pointer"
+                    >
+                      {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
                     </select>
                   </div>
-                  <button type="button" className="text-gray-600 font-bold hover:bg-gray-100 w-7 h-7 rounded-full text-sm">›</button>
+                  <button type="button" onClick={handleNextMonth} className="text-gray-600 font-bold hover:bg-gray-100 w-7 h-7 rounded-full text-sm">›</button>
                 </div>
 
                 <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-gray-400 mb-2">
                   <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
                 </div>
 
+                {/* Hari Dinamis */}
                 <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium">
-                  <div className="p-2"></div>
+                  {/* Kosongkan padding sesuai hari pertama di bulan itu (opsional, untuk sederhana kita langsung render hari) */}
                   {daysInMonth.map((day) => {
-                    const dateStr = `2025-09-${String(day).padStart(2, "0")}`;
+                    const monthStr = String(currentMonth + 1).padStart(2, "0");
+                    const dayStr = String(day).padStart(2, "0");
+                    const dateStr = `${currentYear}-${monthStr}-${dayStr}`;
                     const isSelected = selectedDate === dateStr;
-                    const isSpecialMarked = day === 9 || day === 13;
 
                     return (
                       <button
@@ -192,13 +212,11 @@ export default function RiwayatPickupPage() {
                         onClick={() => {
                           setSelectedDate(isSelected ? null : dateStr);
                           setIsCalendarOpen(false);
-                          setCurrentPage(1); // Reset halaman saat tanggal difilter
+                          setCurrentPage(1); 
                         }}
                         className={`p-2 rounded-lg transition-all font-bold ${
                           isSelected
                             ? "bg-green-600 text-white"
-                            : isSpecialMarked
-                            ? "bg-[#2D2D2D] text-white shadow-sm"
                             : "text-gray-700 hover:bg-gray-100"
                         }`}
                       >
@@ -212,15 +230,42 @@ export default function RiwayatPickupPage() {
           </div>
         </div>
 
-        {/* Daftar Kartu Riwayat (Hanya me-render dataPerHalaman maksimal 3 kartu per page) */}
+        <div className="flex items-center gap-2 mb-8">
+          <button
+            onClick={() => { setActiveTab("Aktif"); setCurrentPage(1); }}
+            className={`flex items-center gap-3 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
+              activeTab === "Aktif" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Aktif
+            <span className={`w-6 h-6 flex items-center justify-center rounded-full text-[11px] ${activeTab === "Aktif" ? "bg-gray-200 text-gray-700" : "bg-gray-200 text-gray-500"}`}>
+              {countAktif}
+            </span>
+          </button>
+          
+          <button
+            onClick={() => { setActiveTab("Selesai"); setCurrentPage(1); }}
+            className={`flex items-center gap-3 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
+              activeTab === "Selesai" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Selesai
+            <span className={`w-6 h-6 flex items-center justify-center rounded-full text-[11px] ${activeTab === "Selesai" ? "bg-[#4CAF50] text-white" : "bg-gray-200 text-gray-500"}`}>
+              {countSelesai}
+            </span>
+          </button>
+        </div>
+
         <div className="space-y-4 mb-12">
-          {dataPerHalaman.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-12 text-gray-400 font-bold animate-pulse">Memuat data riwayat...</div>
+          ) : dataPerHalaman.length > 0 ? (
             dataPerHalaman.map((item) => (
               <div 
                 key={item.id}
-                className="bg-white border border-black rounded-[30px] p-8 shadow-sm flex items-center justify-between"
+                className="bg-white border border-black rounded-[30px] p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between hover:shadow-md transition-shadow cursor-pointer gap-6 md:gap-0"
+                onClick={() => router.push(`/auth/dashboard/pelanggan/riwayat/detail-pengiriman?resi=${item.id}`)}
               >
-                {/* Blok Kiri Informasi Manifes */}
                 <div className="flex items-center gap-6">
                   <div className="flex flex-col justify-center">
                     <span className="font-bold text-lg mb-2">{item.id}</span>
@@ -235,12 +280,11 @@ export default function RiwayatPickupPage() {
                   </div>
                 </div>
 
-                {/* Blok Kanan Aksi */}
-                <div className="flex items-center gap-12">
+                <div className="flex items-center justify-between md:justify-end md:gap-12 w-full md:w-auto">
                   <span className={`px-8 py-2 rounded-full text-xs font-bold border text-center ${
-                    item.status === "Selesai" 
+                    (item.status || "").toLowerCase().trim() === "selesai" 
                       ? "bg-[#E8F5E9] border-green-200 text-green-600" 
-                      : item.status === "Dalam Perjalanan"
+                      : (item.status || "").toLowerCase().trim() === "dalam perjalanan"
                       ? "bg-blue-50 border-blue-200 text-blue-600"
                       : "bg-orange-50 border-orange-200 text-orange-600"
                   }`}>
@@ -249,11 +293,7 @@ export default function RiwayatPickupPage() {
                   
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      router.push(`riwayat/detail-pengiriman?resi=${item.id}`);
-                    }}
-                    className="text-green-600 font-bold text-xl cursor-pointer hover:scale-110 active:scale-95 transition-transform p-2"
+                    className="text-green-600 font-bold text-xl cursor-pointer hover:scale-110 transition-transform p-2 hidden md:block"
                   >
                     ➔
                   </button>
@@ -261,64 +301,60 @@ export default function RiwayatPickupPage() {
               </div>
             ))
           ) : (
-            <div className="text-center py-12 text-gray-400 bg-white border border-dashed border-gray-200 rounded-[30px]">
-              Tidak ada riwayat dengan kriteria tersebut.
+            <div className="text-center py-12 text-gray-400 bg-white border border-dashed border-gray-300 rounded-[30px]">
+              Tidak ada data riwayat dengan filter ini.
             </div>
           )}
         </div>
 
-        {/* Bar Component Pagination (Didesain dinamis menampilkan halaman 1, 2, 3 saja tanpa elipsis) */}
-        <div className="flex items-center justify-center gap-1 mt-8">
-          
-          {/* Tombol Back (←) */}
-          <button
-            type="button"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className={`w-10 h-10 border rounded-l-xl flex items-center justify-center font-bold text-sm transition-all border-gray-200 ${
-              currentPage === 1
-                ? "bg-white text-gray-300 cursor-not-allowed"
-                : "bg-white text-gray-600 hover:bg-gray-50 active:scale-95"
-            }`}
-          >
-            ←
-          </button>
+        {!loading && dataTerfilter.length > 0 && (
+          <div className="flex items-center justify-center gap-1 mt-8">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={`w-10 h-10 border rounded-l-xl flex items-center justify-center font-bold text-sm transition-all border-gray-200 ${
+                currentPage === 1
+                  ? "bg-white text-gray-300 cursor-not-allowed"
+                  : "bg-white text-gray-600 hover:bg-gray-50 active:scale-95"
+              }`}
+            >
+              ←
+            </button>
 
-          {/* Render Angka Halaman Dinamis */}
-          {renderPaginationButtons().map((page) => {
-            const isSelected = currentPage === page;
+            {renderPaginationButtons().map((page) => {
+              const isSelected = currentPage === page;
 
-            return (
-              <button
-                key={`page-${page}`}
-                type="button"
-                onClick={() => setCurrentPage(page)}
-                className={`w-10 h-10 font-bold text-sm transition-all border-y border-x border-gray-200 flex items-center justify-center ${
-                  isSelected
-                    ? "bg-green-600 text-white border-green-600" // Aksen warna hijau aslimu tetap terjaga
-                    : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {page}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={`page-${page}`}
+                  type="button"
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-10 h-10 font-bold text-sm transition-all border-y border-x border-gray-200 flex items-center justify-center ${
+                    isSelected
+                      ? "bg-green-600 text-white border-green-600" 
+                      : "bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {page}
+                </button>
+              );
+            })}
 
-          {/* Tombol Next (→) */}
-          <button
-            type="button"
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className={`w-10 h-10 border rounded-r-xl flex items-center justify-center font-bold text-sm transition-all border-gray-200 ${
-              currentPage === totalPages
-                ? "bg-white text-gray-300 cursor-not-allowed"
-                : "bg-white text-gray-600 hover:bg-gray-50 active:scale-95"
-            }`}
-          >
-            →
-          </button>
-
-        </div>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`w-10 h-10 border rounded-r-xl flex items-center justify-center font-bold text-sm transition-all border-gray-200 ${
+                currentPage === totalPages
+                  ? "bg-white text-gray-300 cursor-not-allowed"
+                  : "bg-white text-gray-600 hover:bg-gray-50 active:scale-95"
+              }`}
+            >
+              →
+            </button>
+          </div>
+        )}
 
       </section>
     </main>
