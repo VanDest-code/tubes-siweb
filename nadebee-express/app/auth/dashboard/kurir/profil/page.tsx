@@ -1,51 +1,92 @@
 "use client";
 
-import { useState } from "react";
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Truck, 
-  Edit3,
-  Lock,
-  CheckCircle2
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { User, Mail, Phone, Truck, Edit3, Lock, CheckCircle2 } from "lucide-react";
+import { supabase } from "@/lib/supabase"; // Pastikan path ini benar
 
 export default function ProfilPage() {
-  // State untuk mengontrol mode edit, pop-up sukses, dan data form
   const [isEditing, setIsEditing] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const [username, setUsername] = useState("Budianto");
-  const [email] = useState("kurirbudi@gmail.com"); 
-  const [phone, setPhone] = useState("089999999999");
-  const [vehicle, setVehicle] = useState("Vario - KT 8665");
+  // Simulasi Login: Menggunakan ID Budi dari database-mu
+  const courierId = "a2c08fd2-ccc2-4271-8a7b-b74870c9dd60";
 
-  // Fungsi untuk menangani simpan profil
-  const handleSave = () => {
-    setIsEditing(false);
-    setShowSaveSuccess(true);
+  // State untuk data form
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState(""); 
+  const [phone, setPhone] = useState("");
+  const [vehicle, setVehicle] = useState("");
+  
+  // State untuk statistik
+  const [stats, setStats] = useState({ total: 0, rating: 0, onTime: 0 });
+
+  // Tarik data profil dari Supabase saat halaman dimuat
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("couriers")
+          .select("*")
+          .eq("id", courierId)
+          .single();
+
+        if (error) throw error;
+        
+        if (data) {
+          setUsername(data.username || "");
+          setEmail(data.email || "");
+          setPhone(data.phone || "");
+          setVehicle(data.vehicle || "Belum diatur");
+          setStats({
+            total: data.total_pengiriman || 0,
+            rating: data.rating || 0,
+            onTime: data.on_time_percentage || 0
+          });
+        }
+      } catch (error) {
+        console.error("Gagal memuat profil:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  // Fungsi simpan update ke database
+  const handleSave = async () => {
+    try {
+      const { error } = await supabase
+        .from("couriers")
+        .update({ username, phone, vehicle })
+        .eq("id", courierId);
+
+      if (error) throw error;
+      
+      setIsEditing(false);
+      setShowSaveSuccess(true);
+    } catch (error) {
+      console.error("Gagal menyimpan perubahan:", error);
+      alert("Gagal menyimpan, silakan coba lagi.");
+    }
   };
+
+  if (loading) {
+    return <div className="text-center py-20 font-bold text-[#4CAF50] animate-pulse">Memuat Profil...</div>;
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-20 relative">
-      
-      {/* POP-UP SUKSES SIMPAN (SESUAI GAMBAR) */}
+      {/* POP-UP SUKSES SIMPAN */}
       {showSaveSuccess && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          {/* Overlay Blur */}
           <div className="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
-          
-          {/* Box Modal Center */}
           <div className="bg-white rounded-[32px] p-10 max-w-sm w-full text-center relative z-10 shadow-2xl animate-in zoom-in duration-300">
             <div className="w-16 h-16 border-2 border-green-500 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 size={32} />
             </div>
-            
-            <h2 className="text-lg font-bold text-gray-900 mb-8">
-              Perubahan Berhasil Disimpan
-            </h2>
-            
+            <h2 className="text-lg font-bold text-gray-900 mb-8">Perubahan Berhasil Disimpan</h2>
             <button 
               onClick={() => setShowSaveSuccess(false)}
               className="w-full bg-[#4CAF50] text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-colors"
@@ -72,17 +113,17 @@ export default function ProfilPage() {
 
           <div className="flex w-full items-center justify-between px-4">
             <div className="text-center flex-1">
-              <p className="text-2xl font-black text-green-600">127</p>
+              <p className="text-2xl font-black text-green-600">{stats.total}</p>
               <p className="text-xs font-bold text-gray-400 mt-1">Pengiriman</p>
             </div>
             <div className="w-px h-12 bg-gray-200"></div>
             <div className="text-center flex-1">
-              <p className="text-2xl font-black text-[#F3D45F]">4.9</p>
+              <p className="text-2xl font-black text-[#F3D45F]">{stats.rating.toFixed(1)}</p>
               <p className="text-xs font-bold text-gray-400 mt-1">Rating</p>
             </div>
             <div className="w-px h-12 bg-gray-200"></div>
             <div className="text-center flex-1">
-              <p className="text-2xl font-black text-blue-500">98</p>
+              <p className="text-2xl font-black text-blue-500">{stats.onTime}</p>
               <p className="text-xs font-bold text-gray-400 mt-1">On-Time</p>
             </div>
           </div>
@@ -93,7 +134,6 @@ export default function ProfilPage() {
       <div className="bg-white border border-green-500 rounded-[32px] p-8 shadow-sm space-y-6">
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-xl font-black text-gray-900">Informasi Pribadi</h3>
-          
           <button 
             onClick={() => setIsEditing(!isEditing)}
             className={`transition-all p-2 rounded-lg ${isEditing ? "bg-green-500 text-white" : "text-green-500 hover:bg-green-50"}`}
@@ -119,7 +159,7 @@ export default function ProfilPage() {
             />
           </div>
 
-          {/* Email (Always Read-Only) */}
+          {/* Email */}
           <div className="space-y-2">
             <label className="flex items-center gap-2 font-black text-gray-600 italic">
               <Mail size={16} /> Email

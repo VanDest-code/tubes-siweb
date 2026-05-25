@@ -1,11 +1,15 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Image from "next/image";
+import { supabase } from "@/lib/supabase"; // Pastikan path impor ini sesuai dengan struktur proyekmu
 
-export default function KonfirmasiPickupPage() {
+function KonfirmasiPickupContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const courierId = searchParams.get("courier_id"); // Menangkap ID Kurir dari URL query parameter
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -13,6 +17,7 @@ export default function KonfirmasiPickupPage() {
   // State untuk data dinamis
   const [pickupData, setPickupData] = useState<any>(null);
   const [totalOngkir, setTotalOngkir] = useState<number>(0);
+  const [courierName, setCourierName] = useState<string>("Memuat...");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -44,6 +49,38 @@ export default function KonfirmasiPickupPage() {
     }
   }, []);
 
+  // Ambil nama kurir dari database Supabase secara dinamis
+  useEffect(() => {
+    const fetchCourierName = async () => {
+      if (!courierId) {
+        setCourierName("Belum dipilih");
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from("couriers")
+          .select("username")
+          .eq("id", courierId)
+          .single();
+          
+        if (error) throw error;
+        if (data) {
+          setCourierName(data.username);
+        } else {
+          setCourierName("Kurir tidak ditemukan");
+        }
+      } catch (err) {
+        console.error("Gagal mengambil nama kurir:", err);
+        setCourierName("Gagal memuat nama kurir");
+      }
+    };
+
+    if (mounted) {
+      fetchCourierName();
+    }
+  }, [courierId, mounted]);
+
   const handlePayment = () => {
     if (!paymentMethod) {
       setError("Metode pembayaran wajib dipilih");
@@ -53,6 +90,11 @@ export default function KonfirmasiPickupPage() {
     // Titipkan metode pembayaran dan total ongkir akhir ke sessionStorage
     sessionStorage.setItem("paymentMethod", paymentMethod);
     sessionStorage.setItem("totalOngkir", totalOngkir.toString());
+
+    // Titipkan ID Kurir agar nanti halaman sukses bayar bisa melakukan INSERT ke database dengan benar
+    if (courierId) {
+      sessionStorage.setItem("selectedCourierId", courierId);
+    }
 
     if (paymentMethod === "Tunai") {
       router.push("/auth/dashboard/pelanggan/request-pickup/pembayaran-tunai");
@@ -106,6 +148,13 @@ export default function KonfirmasiPickupPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Pembayaran</span>
                   <span className="text-[#4CAF50] font-semibold">{paymentMethod || "-"}</span>
+                </div>
+                {/* Bagian Kurir Terpilih secara Otomatis dari Database */}
+                <div className="flex justify-between items-center border-t border-gray-100 pt-4 mt-2">
+                  <span className="text-gray-400">Kurir Terpilih</span>
+                  <span className="text-[#4CAF50] font-bold">
+                    {courierName}
+                  </span>
                 </div>
               </div>
 
@@ -184,5 +233,18 @@ export default function KonfirmasiPickupPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+// Wrapper utama dengan Suspense demi standar Next.js App Router
+export default function KonfirmasiPickupPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="font-bold text-[#4CAF50] animate-pulse">Memuat data konfirmasi...</p>
+      </div>
+    }>
+      <KonfirmasiPickupContent />
+    </Suspense>
   );
 }

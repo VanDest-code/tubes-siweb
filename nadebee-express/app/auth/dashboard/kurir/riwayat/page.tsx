@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -10,128 +10,68 @@ import {
   Calendar,
   XCircle,
   ChevronLeft,
- ChevronRight,
+  ChevronRight,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 export default function RiwayatPage() {
   const [showFilter, setShowFilter] = useState(false);
   const [selectedRating, setSelectedRating] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // State Dinamis dari Supabase
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Data Dummy Riwayat LENGKAP
-  const historyData = [
-    {
-      id: "NDB011",
-      customer: "Citra Lestari",
-      status: "Selesai",
-      price: "Rp 35.000",
-      rating: 4,
-      route: "Jl.Nganglik No.123 → Jl.Kalasan No.12",
-      duration: "30 Menit",
-      date: "5 April 2026",
-      review: "Kurir ramah dan amanah",
-    },
-    {
-      id: "NDB012",
-      customer: "Budi Santoso",
-      status: "Selesai",
-      price: "Rp 20.000",
-      rating: 4,
-      route: "Jl.Palagan No.45 → Jl.Magelang No.10",
-      duration: "20 Menit",
-      date: "Hari ini",
-      review: "Pengiriman tepat waktu",
-    },
-    {
-      id: "NDB013",
-      customer: "Siti Rahayu",
-      status: "Selesai",
-      price: "Rp 15.000",
-      rating: 5,
-      route: "Jl.Dagen No.15 → Jl.Babarsari No.113",
-      duration: "15 Menit",
-      date: "3 April 2026",
-      review: "Sangat cepat!",
-    },
-    {
-      id: "NDB014",
-      customer: "Ray Claudio",
-      status: "Selesai",
-      price: "Rp 25.000",
-      rating: 3,
-      route: "Jl.Wonomartani → Jl.Solo",
-      duration: "45 Menit",
-      date: "2 April 2026",
-      review: "Biasa saja, agak telat",
-    },
-    {
-      id: "NDB015",
-      customer: "Andi Pratama",
-      status: "Selesai",
-      price: "Rp 28.000",
-      rating: 5,
-      route: "Jl.Seturan → Jl.Godean",
-      duration: "25 Menit",
-      date: "1 April 2026",
-      review: "Pelayanan mantap",
-    },
-    {
-      id: "NDB016",
-      customer: "Dewi Anggraini",
-      status: "Selesai",
-      price: "Rp 18.000",
-      rating: 4,
-      route: "Jl.Adi Sucipto → Jl.Kaliurang",
-      duration: "18 Menit",
-      date: "31 Maret 2026",
-      review: "Cepat dan sopan",
-    },
-    {
-      id: "NDB017",
-      customer: "Fajar Nugroho",
-      status: "Selesai",
-      price: "Rp 22.000",
-      rating: 3,
-      route: "Jl.Monjali → Jl.Timoho",
-      duration: "35 Menit",
-      date: "30 Maret 2026",
-      review: "Lumayan baik",
-    },
-    {
-      id: "NDB018",
-      customer: "Nadia Putri",
-      status: "Selesai",
-      price: "Rp 40.000",
-      rating: 5,
-      route: "Jl.Gejayan → Jl.Bantul",
-      duration: "40 Menit",
-      date: "29 Maret 2026",
-      review: "Sangat recommended",
-    },
-    {
-      id: "NDB019",
-      customer: "Rizky Maulana",
-      status: "Selesai",
-      price: "Rp 17.000",
-      rating: 2,
-      route: "Jl.Janti → Jl.Wates",
-      duration: "50 Menit",
-      date: "28 Maret 2026",
-      review: "Agak lama",
-    },
-    {
-      id: "NDB020",
-      customer: "Lala Febriana",
-      status: "Selesai",
-      price: "Rp 32.000",
-      rating: 5,
-      route: "Jl.Kotabaru → Jl.Parangtritis",
-      duration: "27 Menit",
-      date: "27 Maret 2026",
-      review: "Kurir sangat helpful",
-    },
-  ];
+useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        setLoading(true);
+        const savedCourierId = sessionStorage.getItem("loggedInCourierId") || "a2c08fd2-ccc2-4271-8a7b-b74870c9dd60";
+
+        // Tarik data yang statusnya 'Selesai'
+        // PERBAIKAN: Menggunakan created_at sebagai patokan urutan
+        const { data, error } = await supabase
+          .from("shipments")
+          .select("*")
+          .eq("courier_id", savedCourierId)
+          .eq("status", "Selesai")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        if (data) {
+          // KUNCI LOGIKA: Hanya tampilkan yang sudah di-rating oleh pelanggan (> 0)
+          const ratedShipments = data.filter((item: any) => item.rating && item.rating > 0);
+
+          const formattedObject = ratedShipments.map((item: any) => {
+            // PERBAIKAN: Menggunakan created_at
+            const dateObj = new Date(item.created_at);
+            return {
+              id: item.resi_number,
+              customer: item.sender_name,
+              status: item.status,
+              price: `Rp ${item.shipping_cost?.toLocaleString('id-ID') || 0}`,
+              rating: item.rating,
+              route: `${item.sender_address.substring(0, 15)}... → ${item.receiver_address.substring(0, 15)}...`,
+              duration: "Selesai", 
+              date: dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+              review: item.review || "Tidak ada ulasan tertulis",
+            };
+          });
+
+          setHistoryData(formattedObject);
+        }
+      } catch (error) {
+        console.error("Gagal menarik data riwayat:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, []);
 
   // ==========================================
   // FILTER & SEARCH
@@ -152,7 +92,7 @@ export default function RiwayatPage() {
   // PAGINATION
   // ==========================================
   const itemsPerPage = 4;
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedData = filteredData.slice(
@@ -168,7 +108,7 @@ export default function RiwayatPage() {
           Riwayat Pickup
         </h1>
         <p className="text-sm text-gray-500 font-medium">
-          Menampilkan ringkasan pickup yang pernah kamu lakukan
+          Menampilkan ringkasan pickup yang telah disetujui pelanggan
         </p>
       </div>
 
@@ -178,7 +118,6 @@ export default function RiwayatPage() {
           className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
           size={20}
         />
-
         <input
           type="text"
           placeholder="cari berdasarkan nomor resi atau nama"
@@ -262,7 +201,11 @@ export default function RiwayatPage() {
 
       {/* List Riwayat */}
       <div className="space-y-6">
-        {filteredData.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-12 text-[#4CAF50] font-bold animate-pulse">
+            Memuat riwayat pekerjaanmu...
+          </div>
+        ) : filteredData.length > 0 ? (
           <>
             {paginatedData.map((item, index) => (
               <div
@@ -349,53 +292,45 @@ export default function RiwayatPage() {
             ))}
 
             {/* Pagination */}
-            <div className="flex items-center justify-center pt-4">
-              <div className="flex overflow-hidden rounded-2xl border border-gray-300 bg-white">
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center pt-4">
+                <div className="flex overflow-hidden rounded-2xl border border-gray-300 bg-white">
+                  <button
+                    onClick={() => setCurrentPage((prev) => prev - 1)}
+                    disabled={currentPage === 1}
+                    className="w-14 h-12 flex items-center justify-center border-r border-gray-300 text-gray-400 disabled:opacity-50"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
 
-                {/* Prev */}
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => prev - 1)
-                  }
-                  disabled={currentPage === 1}
-                  className="w-14 h-12 flex items-center justify-center border-r border-gray-300 text-gray-400 disabled:opacity-50"
-                >
-                  <ChevronLeft size={18} />
-                </button>
+                  {[...Array(totalPages)].map((_, index) => {
+                    const page = index + 1;
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-14 h-12 text-sm font-bold border-r border-gray-300 transition-all ${
+                          currentPage === page
+                            ? "bg-[#00B14F] text-white"
+                            : "bg-[#F5F5F5] text-[#2B3A55]"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
 
-                {/* Number */}
-                {[...Array(totalPages)].map((_, index) => {
-                  const page = index + 1;
-
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`w-14 h-12 text-sm font-bold border-r border-gray-300 transition-all ${
-                        currentPage === page
-                          ? "bg-[#00B14F] text-white"
-                          : "bg-[#F5F5F5] text-[#2B3A55]"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                })}
-
-                {/* Next */}
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => prev + 1)
-                  }
-                  disabled={currentPage === totalPages}
-                  className="w-14 h-12 flex items-center justify-center text-[#2B3A55] disabled:opacity-50"
-                >
-                  <ChevronRight size={18} />
-                </button>
+                  <button
+                    onClick={() => setCurrentPage((prev) => prev + 1)}
+                    disabled={currentPage === totalPages}
+                    className="w-14 h-12 flex items-center justify-center text-[#2B3A55] disabled:opacity-50"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </>
-          
         ) : (
           <div className="flex flex-col items-center justify-center py-20 bg-white border-2 border-dashed border-gray-200 rounded-[32px] space-y-4">
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300">
@@ -404,11 +339,10 @@ export default function RiwayatPage() {
 
             <div className="text-center">
               <p className="text-gray-600 font-black text-xl">
-                Data Tidak Ditemukan
+                Belum Ada Riwayat
               </p>
-
               <p className="text-gray-400 font-medium">
-                Riwayat berdasarkan kriteria tersebut tidak ditemukan
+                Selesaikan pesanan dan tunggu penilaian dari pelanggan.
               </p>
             </div>
 

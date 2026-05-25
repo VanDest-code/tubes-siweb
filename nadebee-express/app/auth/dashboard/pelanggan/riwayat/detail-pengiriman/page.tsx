@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, Clock, Star, Package, Truck } from "lucide-react"; // <-- TAMBAHAN IKON
+import { Check, Clock, Star, Package, Truck, User } from "lucide-react"; 
 import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -24,9 +24,11 @@ function DetailPengirimanContent() {
   const [detailData, setDetailData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // State untuk Manajemen Rating & Ulasan
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [ulasan, setUlasan] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -36,7 +38,14 @@ function DetailPengirimanContent() {
       try {
         const { data, error } = await supabase
           .from("shipments")
-          .select("*")
+          .select(`
+            *,
+            couriers (
+              username,
+              vehicle,
+              phone
+            )
+          `)
           .eq("resi_number", resiQuery)
           .single();
 
@@ -51,6 +60,39 @@ function DetailPengirimanContent() {
 
     fetchDetail();
   }, [resiQuery]);
+
+  // ==========================================
+  // LOGIKA INSERT RATING KE SUPABASE
+  // ==========================================
+  const submitRating = async () => {
+    if (rating === 0 || !detailData) return;
+
+    try {
+      setIsSubmitting(true);
+      const { error } = await supabase
+        .from("shipments")
+        .update({
+          rating: rating,
+          review: ulasan
+        })
+        .eq("resi_number", resiQuery);
+
+      if (error) throw error;
+
+      // Sinkronkan state lokal agar UI langsung terkunci tanpa refresh manual
+      setDetailData((prev: any) => ({
+        ...prev,
+        rating: rating,
+        review: ulasan
+      }));
+
+    } catch (error) {
+      console.error("Gagal mengirim penilaian:", error);
+      alert("Gagal mengirim penilaian, silakan coba lagi.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (!mounted) return null;
 
@@ -108,6 +150,9 @@ function DetailPengirimanContent() {
 
   const proofImageUrl = detailData.bukti_foto_url || "https://images.unsplash.com/photo-1580674285054-bed31e145f59?q=80&w=2070&auto=format&fit=crop";
 
+  // Cek apakah data rating sudah tersimpan di database
+  const hasBeenRated = detailData.rating && detailData.rating > 0;
+
   return (
     <main className="w-full flex flex-col items-center pt-10 pb-20 px-6 max-w-[1200px] mx-auto animate-in fade-in duration-500">
       
@@ -128,9 +173,37 @@ function DetailPengirimanContent() {
           {/* --- KOLOM KIRI: INFO PAKET & STATUS TIMELINE --- */}
           <div className="space-y-12">
             
-            <div className="bg-[#E8F5E9]/60 border border-[#4CAF50]/30 rounded-[20px] p-8 w-full max-w-[320px]">
-              <p className="text-gray-400 text-[14px] font-medium mb-2">Nomor Resi</p>
-              <p className="text-[#4CAF50] font-black text-[22px] tracking-tight">{detailData.resi_number}</p>
+            <div className="flex flex-col sm:flex-row gap-4 w-full">
+              {/* Box Nomor Resi */}
+              <div className="bg-[#E8F5E9]/60 border border-[#4CAF50]/30 rounded-[20px] p-6 flex-1 flex flex-col justify-center">
+                <p className="text-gray-400 text-[13px] font-bold mb-2 uppercase tracking-wider">Nomor Resi</p>
+                <p className="text-[#4CAF50] font-black text-[22px] tracking-tight">{detailData.resi_number}</p>
+              </div>
+
+              {/* Box Info Kurir */}
+              <div className="bg-white border border-gray-200 rounded-[20px] p-5 flex-1 shadow-sm flex flex-col justify-center">
+                <p className="text-gray-400 text-[11px] font-bold mb-3 flex items-center gap-2 uppercase tracking-widest">
+                  <Truck size={14} className="text-[#4CAF50]" /> Info Kurir
+                </p>
+                
+                {detailData.couriers ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#E8F5E9] rounded-full flex items-center justify-center text-[#4CAF50] shrink-0">
+                      <User size={18} />
+                    </div>
+                    <div>
+                      <p className="font-black text-[15px] text-black leading-tight">
+                        {detailData.couriers.username}
+                      </p>
+                      <p className="text-[11px] font-medium text-gray-500 mt-1">
+                        {detailData.couriers.vehicle}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[12px] font-medium text-gray-400 italic">Mencari kurir terdekat...</p>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-x-4 gap-y-6 text-[15px]">
@@ -184,7 +257,7 @@ function DetailPengirimanContent() {
 
           </div>
 
-          {/* --- KOLOM KANAN: BUKTI PENGIRIMAN ATAU FILLER INFO AKTIF --- */}
+          {/* --- KOLOM KANAN: BUKTI PENGIRIMAN --- */}
           <div className="w-full flex flex-col h-full">
             {isSelesai ? (
               <div className="space-y-4">
@@ -198,14 +271,11 @@ function DetailPengirimanContent() {
                 </div>
               </div>
             ) : (
-              // --- PENGISI BLANK SPACE UNTUK STATUS AKTIF ---
               <div className="flex flex-col items-end flex-grow w-full">
-                {/* Badge Status (Sekarang Capslock) */}
                 <span className="px-8 py-2 rounded-full text-xs font-black border bg-orange-50 border-orange-200 text-orange-600 mb-12">
                   {detailData.status?.toUpperCase()}
                 </span>
 
-                {/* Box Ilustrasi/Tips agar tidak kosong */}
                 <div className="w-full mt-auto bg-[#F9FBF9] border-2 border-dashed border-gray-200 rounded-[30px] flex flex-col items-center justify-center p-10 text-center">
                   <div className="w-20 h-20 bg-white border border-gray-100 shadow-sm rounded-[20px] flex items-center justify-center mb-6 text-[#4CAF50]">
                     {dbStatus === "menunggu kurir" ? <Package size={36} strokeWidth={2.5} /> : <Truck size={36} strokeWidth={2.5} />}
@@ -225,7 +295,6 @@ function DetailPengirimanContent() {
 
         </div>
 
-        {/* Badge SELESAI Hijau di Pojok Kanan Atas Khusus Jika Selesai */}
         {isSelesai && (
           <div className="absolute top-16 right-16">
             <span className="px-8 py-2 rounded-full text-xs font-black border bg-[#E8F5E9] border-green-200 text-green-600">
@@ -236,49 +305,79 @@ function DetailPengirimanContent() {
 
       </div>
 
+      {/* --- AREA FORM PENILAIAN / RATING --- */}
       {isSelesai && (
         <div className="w-full bg-white border border-black rounded-[40px] p-12 shadow-sm text-center mb-8">
-          <h3 className="font-black text-black mb-6">Paket sudah sampai! Yuk beri penilaian..</h3>
+          <h3 className="font-black text-black mb-6">
+            {hasBeenRated ? "Penilaian Kamu Berhasil Dikirim" : "Paket sudah sampai! Yuk beri penilaian.."}
+          </h3>
           
+          {/* Looping Bintang Dinamis (Bisa mengunci otomatis) */}
           <div className="flex justify-center gap-3 mb-8">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                type="button"
-                onMouseEnter={() => setHoveredRating(star)}
-                onMouseLeave={() => setHoveredRating(0)}
-                onClick={() => setRating(star)}
-                className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
-              >
-                <Star 
-                  size={40} 
-                  className={`${
-                    star <= (hoveredRating || rating) 
-                      ? "fill-[#4CAF50] text-[#4CAF50]" 
-                      : "text-gray-300"
-                  } transition-colors`} 
-                />
-              </button>
-            ))}
+            {[1, 2, 3, 4, 5].map((star) => {
+              // Gunakan rating database jika sudah ada, jika tidak gunakan rating interaktif local
+              const finalActiveStar = hasBeenRated ? detailData.rating : (hoveredRating || rating);
+              const isActive = star <= finalActiveStar;
+
+              if (hasBeenRated) {
+                // RENDER BINTANG MATI (Tidak bisa di-hover / diklik)
+                return (
+                  <div key={star} className="transition-all">
+                    <Star 
+                      size={40} 
+                      className={isActive ? "fill-[#4CAF50] text-[#4CAF50]" : "text-gray-300"} 
+                    />
+                  </div>
+                );
+              }
+
+              // RENDER BINTANG AKTIF (Bisa di-hover / diklik untuk input pertama kali)
+              return (
+                <button
+                  key={star}
+                  type="button"
+                  onMouseEnter={() => setHoveredRating(star)}
+                  onMouseLeave={() => setHoveredRating(0)}
+                  onClick={() => setRating(star)}
+                  className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
+                >
+                  <Star 
+                    size={40} 
+                    className={`${isActive ? "fill-[#4CAF50] text-[#4CAF50]" : "text-gray-300"} transition-colors`} 
+                  />
+                </button>
+              );
+            })}
           </div>
 
-          <textarea
-            placeholder="Tulis ulasan (opsional)..."
-            value={ulasan}
-            onChange={(e) => setUlasan(e.target.value)}
-            className="w-full bg-[#EBF5EB] border-transparent focus:border-[#4CAF50] focus:ring-0 rounded-[20px] p-5 text-sm mb-6 resize-none h-[120px] outline-none text-gray-700 placeholder:text-gray-400"
-          ></textarea>
+          {hasBeenRated ? (
+            /* TAMPILAN TEXT REVIEW LOCK */
+            <div className="w-full bg-[#F4F9F4] border border-green-200 rounded-[20px] p-6 text-sm font-semibold italic text-gray-600 max-w-[600px] mx-auto">
+              "{detailData.review || "Tidak ada ulasan tertulis"}"
+            </div>
+          ) : (
+            /* TAMPILAN INPUT FORM AKTIF */
+            <>
+              <textarea
+                placeholder="Tulis ulasan (opsional)..."
+                value={ulasan}
+                onChange={(e) => setUlasan(e.target.value)}
+                className="w-full bg-[#EBF5EB] border-transparent focus:border-[#4CAF50] focus:ring-0 rounded-[20px] p-5 text-sm mb-6 resize-none h-[120px] outline-none text-gray-700 placeholder:text-gray-400"
+              ></textarea>
 
-          <button 
-            className={`w-full font-black py-5 rounded-[20px] text-lg transition-all active:scale-[0.98] ${
-              rating > 0 
-                ? "bg-[#4CAF50] text-white shadow-lg shadow-green-100 hover:bg-[#43A047]" 
-                : "bg-[#E0E0E0] text-gray-400 cursor-not-allowed"
-            }`}
-            disabled={rating === 0}
-          >
-            Kirim Penilaian
-          </button>
+              <button 
+                onClick={submitRating}
+                disabled={rating === 0 || isSubmitting}
+                className={`w-full font-black py-5 rounded-[20px] text-lg transition-all active:scale-[0.98] ${
+                  rating > 0 && !isSubmitting
+                    ? "bg-[#4CAF50] text-white shadow-lg shadow-green-100 hover:bg-[#43A047]" 
+                    : "bg-[#E0E0E0] text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                {isSubmitting ? "Mengirim Penilaian..." : "Kirim Penilaian"}
+              </button>
+            </>
+          )}
         </div>
       )}
 
