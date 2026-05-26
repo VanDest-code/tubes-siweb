@@ -116,6 +116,15 @@ function KonfirmasiPickupContent() {
           <p className="text-gray-500 text-sm">Request pickup kamu sudah masuk!</p>
         </div>
 
+        <div className="w-full flex justify-start mb-6">
+          <button 
+            onClick={() => router.back()}
+            className="text-gray-400 hover:text-gray-600 transition-all font-medium italic text-sm flex items-center gap-2 cursor-pointer"
+          >
+            ← Kembali
+          </button>
+        </div>
+        
         {/* Pembungkus Utama Dua Kolom */}
         <div className="flex flex-col lg:flex-row items-center justify-between gap-12 w-full">
           

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Sidebar from "@/components/layout/Sidebar";
-import { User, Phone, Mail, Edit3, CheckCircle2, Key, LogOut } from "lucide-react";
+import { User, Phone, Mail, Edit3, CheckCircle2, Key, LogOut, Check } from "lucide-react";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -13,6 +13,7 @@ export default function ProfilePage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   // State Data & Edit Mode
   const [formData, setFormData] = useState({
@@ -20,14 +21,13 @@ export default function ProfilePage() {
     phone: "",
     email: ""
   });
-  const [isEditUsername, setIsEditUsername] = useState(false);
-  const [isEditPhone, setIsEditPhone] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // State Password & Error Objek
   const [passwords, setPasswords] = useState({ old: "", new: "", confirm: "" });
   const [errors, setErrors] = useState({ old: "", new: "", confirm: "" });
 
-  // 1. Ambil Data Pengguna Terautentikasi (Disederhanakan & Case-Insensitive)
+  // 1. Ambil Data Pengguna Terautentikasi
   useEffect(() => {
     async function getProfile() {
       try {
@@ -38,10 +38,9 @@ export default function ProfilePage() {
           return;
         }
 
-        // MEMAKSA EMAIL MENJADI HURUF KECIL UNTUK MENGHINDARI BUG CASE-SENSITIVE SQL
         const userEmail = session.user.email ? session.user.email.toLowerCase().trim() : "";
 
-        // Ambil data profil berdasarkan email pengguna yang sedang login
+        // Ambil data profil berdasarkan email
         const { data, error: profileError } = await supabase
           .from("profiles")
           .select("full_name, phone_number, email")
@@ -49,9 +48,7 @@ export default function ProfilePage() {
           .single();
 
         if (profileError) {
-          console.log("⚠️ Email tidak cocok atau gagal ditemukan di tabel profiles:", profileError.message);
-          
-          // Jika query gagal, gunakan data tangkapan langsung dari metadata session login
+          console.log("⚠️ Menggunakan data fallback dari session.");
           setFormData({
             username: session.user.user_metadata?.full_name || "Pelanggan Nadebee",
             phone: session.user.phone || "",
@@ -76,39 +73,41 @@ export default function ProfilePage() {
     getProfile();
   }, [router]);
 
-  // 2. Fungsi Update Data Profil Menggunakan .upsert() Terarah
+  // 2. Fungsi Update Data Profil (Menggunakan .update agar lebih aman)
   const handleUpdateProfile = async () => {
     try {
-      setLoading(true);
+      setIsSaving(true);
       const targetEmail = formData.email.toLowerCase().trim();
       
-      // Menggunakan .upsert agar aman menangani baris data baru maupun pembaharuan data lama
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
-        .upsert({
-          email: targetEmail,             // Kunci pengikat data utama
-          full_name: formData.username,   // Menyimpan string nama baru
-          phone_number: formData.phone,   // Menyimpan string nomor telepon baru
+        .update({
+          full_name: formData.username,
+          phone_number: formData.phone,
           user_type: "pelanggan"
-        }, { 
-          onConflict: 'email'             // Jika string email bentrok, lakukan operasi UPDATE
-        });
+        })
+        .eq("email", targetEmail)
+        .select(); // Tambahkan .select() untuk mengecek apakah data benar-benar berubah
 
       if (error) throw error;
+      
+      // Mencegah silent failure jika RLS menghalangi update
+      if (!data || data.length === 0) {
+        throw new Error("Update diblokir oleh sistem keamanan database (RLS)!");
+      }
 
-      setIsEditUsername(false);
-      setIsEditPhone(false);
-      setSuccessMessage("Perubahan Berhasil Disimpan");
+      setIsEditMode(false);
+      setSuccessMessage("Profil Berhasil Disimpan");
       setShowSuccessModal(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Gagal mengupdate profil:", err);
-      alert("Gagal menyimpan perubahan ke database. Periksa koneksi jaringan Anda.");
+      alert(`Gagal menyimpan perubahan: ${err.message || "Periksa koneksi atau keamanan database."}`);
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
-  // 3. Fungsi Update Password Ke Supabase Auth
+  // 3. Fungsi Update Password
   const handleUpdatePassword = async () => {
     let tempErrors = { old: "", new: "", confirm: "" };
     let isValid = true;
@@ -133,7 +132,7 @@ export default function ProfilePage() {
       tempErrors.confirm = "Konfirmasi password wajib diisi";
       isValid = false;
     } else if (passwords.confirm !== passwords.new) {
-      tempErrors.confirm = "Password tidak valid";
+      tempErrors.confirm = "Password tidak cocok";
       isValid = false;
     }
 
@@ -166,166 +165,181 @@ export default function ProfilePage() {
 
   if (loading && formData.email === "") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8FFF8]">
-        <p className="text-sm font-medium text-gray-500 animate-pulse">Memuat informasi profil...</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#F4F9F4]">
+        <p className="text-sm font-bold text-[#4CAF50] animate-pulse">Memuat informasi profil...</p>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#F8FFF8] pb-20">
+    <main className="min-h-screen bg-[#F4F9F4] pb-20">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       <section className="flex flex-col items-center pt-12 px-6 max-w-xl mx-auto">
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Profil Saya</h2>
-          <p className="text-gray-400 text-sm">Kelola informasi akunmu</p>
+        
+        <div className="text-center mb-10">
+          <h1 className="text-2xl font-black text-gray-900">Profil Saya</h1>
+          <p className="text-sm text-gray-500 font-medium mt-1">Kelola informasi akunmu</p>
         </div>
 
-        {/* AVATAR */}
+        {/* AVATAR & NAMA */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-full border border-[#4CAF50] flex items-center justify-center bg-white mb-2">
-            <User className="text-[#4CAF50]" size={28} />
+          <div className="w-20 h-20 border-2 border-[#4CAF50] rounded-full flex items-center justify-center bg-white mb-4 shadow-sm">
+            <User className="text-[#4CAF50]" size={32} />
           </div>
-          <h3 className="text-lg font-bold">{formData.username || "Pelanggan Nadebee"}</h3>
-          <p className="text-gray-400 text-xs">Akun Terverifikasi</p>
+          <h2 className="text-xl font-black text-gray-900">{formData.username || "Pelanggan"}</h2>
+          <p className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-wider">Akun Terverifikasi</p>
         </div>
 
-        {/* FORM PROFIL */}
-        <div className="w-full bg-white border border-gray-200 rounded-[25px] p-6 shadow-sm mb-6">
-          <div className="space-y-4">
+        {/* KARTU FORM PROFIL */}
+        <div className="w-full bg-white border border-gray-200 rounded-[32px] p-8 shadow-sm mb-6 relative">
+          
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="text-lg font-black text-gray-900">Informasi Pribadi</h3>
+            <button 
+              onClick={() => isEditMode ? handleUpdateProfile() : setIsEditMode(true)}
+              disabled={isSaving}
+              className="w-10 h-10 rounded-full flex items-center justify-center bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+            >
+              {isEditMode ? <Check size={18} /> : <Edit3 size={18} />}
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            
             <div>
-              <label className="flex items-center gap-2 text-gray-500 text-xs font-bold mb-1 ml-1">
-                <User size={12}/> Username
+              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                <User size={16} className="text-gray-400"/> Username
               </label>
-              <div className="relative">
-                <input 
-                  value={formData.username}
-                  onChange={(e) => setFormData({...formData, username: e.target.value})}
-                  disabled={!isEditUsername}
-                  className={`w-full px-4 py-3 border rounded-xl outline-none text-sm ${isEditUsername ? "border-[#4CAF50]" : "border-gray-200 bg-gray-50"}`}
-                />
-                <button onClick={() => setIsEditUsername(!isEditUsername)} className="absolute right-4 top-1/2 -translate-y-1/2">
-                  <Edit3 size={16} className={isEditUsername ? "text-[#4CAF50]" : "text-gray-300"} />
-                </button>
-              </div>
+              <input 
+                value={formData.username}
+                onChange={(e) => setFormData({...formData, username: e.target.value})}
+                disabled={!isEditMode}
+                className={`w-full p-4 rounded-xl text-sm font-medium border transition-colors ${isEditMode ? "bg-white border-[#4CAF50] focus:ring-2 focus:ring-green-100 outline-none text-black" : "bg-gray-50/50 border-gray-100 text-gray-500"}`}
+              />
             </div>
 
             <div>
-              <label className="flex items-center gap-2 text-gray-500 text-xs font-bold mb-1 ml-1">
-                <Phone size={12}/> Nomor Telepon
+              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                <Phone size={16} className="text-gray-400"/> Nomor Telepon
               </label>
-              <div className="relative">
-                <input 
-                  value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  disabled={!isEditPhone}
-                  className={`w-full px-4 py-3 border rounded-xl outline-none text-sm ${isEditPhone ? "border-[#4CAF50]" : "border-gray-200 bg-gray-50"}`}
-                />
-                <button onClick={() => setIsEditPhone(!isEditPhone)} className="absolute right-4 top-1/2 -translate-y-1/2">
-                  <Edit3 size={16} className={isEditPhone ? "text-[#4CAF50]" : "text-gray-300"} />
-                </button>
-              </div>
+              <input 
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                disabled={!isEditMode}
+                className={`w-full p-4 rounded-xl text-sm font-medium border transition-colors ${isEditMode ? "bg-white border-[#4CAF50] focus:ring-2 focus:ring-green-100 outline-none text-black" : "bg-gray-50/50 border-gray-100 text-gray-500"}`}
+              />
             </div>
 
             <div>
-              <label className="flex items-center gap-2 text-gray-500 text-xs font-bold mb-1 ml-1">
-                <Mail size={12}/> Email
+              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                <Mail size={16} className="text-gray-400"/> Email
               </label>
               <input 
                 disabled 
                 value={formData.email} 
-                className="w-full px-4 py-3 bg-[#E8F5E9] border border-[#4CAF50] rounded-xl text-sm text-gray-600 cursor-not-allowed" 
+                className="w-full p-4 rounded-xl text-sm font-medium border bg-green-50/30 border-green-100 text-gray-400 cursor-not-allowed" 
               />
             </div>
 
-            <button 
-              onClick={handleUpdateProfile} 
-              className="w-full bg-[#4CAF50] text-white font-bold py-3.5 rounded-xl mt-2 hover:bg-[#43A047] transition-colors"
-            >
-              Simpan Profil
-            </button>
+            {isEditMode && (
+              <button 
+                onClick={handleUpdateProfile} 
+                disabled={isSaving}
+                className="w-full bg-[#4CAF50] text-white font-bold py-4 rounded-xl mt-4 hover:bg-green-600 transition-colors shadow-lg shadow-green-100 animate-in fade-in"
+              >
+                {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
+              </button>
+            )}
           </div>
         </div>
 
         {/* UBAH PASSWORD TOGGLE */}
         {!showPasswordForm && (
-          <p className="mb-6 text-sm text-gray-500">
-            Ubah Password? <button onClick={() => setShowPasswordForm(true)} className="font-bold underline text-gray-700">Klik disini</button>
+          <p className="mb-8 text-sm font-medium text-gray-500">
+            Ubah Password? <button onClick={() => setShowPasswordForm(true)} className="font-black text-gray-900 hover:underline">Klik disini</button>
           </p>
         )}
 
-        {/* FORM PASSWORD DENGAN ERROR HANDLING */}
+        {/* FORM PASSWORD */}
         {showPasswordForm && (
-          <div className="w-full bg-white border border-gray-200 rounded-[25px] p-6 shadow-sm mb-6 animate-in slide-in-from-top-4">
-            <h3 className="flex items-center gap-2 font-bold text-sm mb-4"><Key size={16} /> Ubah Password</h3>
-            <div className="space-y-4">
+          <div className="w-full bg-white border border-gray-200 rounded-[32px] p-8 shadow-sm mb-8 animate-in slide-in-from-top-4 fade-in duration-200">
+            <h3 className="flex items-center gap-2 font-black text-lg text-gray-900 mb-6"><Key size={20} className="text-[#4CAF50]" /> Ubah Password</h3>
+            <div className="space-y-5">
               <div>
-                <label className="text-xs font-bold text-gray-600 ml-1">Password Lama</label>
+                <label className="text-sm font-bold text-gray-700 mb-2 block">Password Lama</label>
                 <input 
                   type="password"
                   placeholder="Masukkan password lama"
-                  className={`w-full px-4 py-3 border rounded-xl outline-none text-sm focus:border-[#4CAF50] ${errors.old ? 'border-red-300' : 'border-gray-200'}`}
+                  className={`w-full p-4 rounded-xl text-sm font-medium border outline-none focus:ring-2 ${errors.old ? 'border-red-300 focus:ring-red-100' : 'border-gray-200 focus:border-[#4CAF50] focus:ring-green-100'}`}
                   value={passwords.old}
                   onChange={(e) => {setPasswords({...passwords, old: e.target.value}); setErrors({...errors, old: ""});}}
                 />
-                {errors.old && <p className="text-red-400 text-[10px] italic mt-1 ml-1">{errors.old}</p>}
+                {errors.old && <p className="text-red-500 text-[11px] font-bold mt-1.5">{errors.old}</p>}
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-600 ml-1">Password Baru</label>
+                <label className="text-sm font-bold text-gray-700 mb-2 block">Password Baru</label>
                 <input 
                   type="password"
-                  placeholder="Masukkan password baru (angka/huruf)"
-                  className={`w-full px-4 py-3 border rounded-xl outline-none text-sm focus:border-[#4CAF50] ${errors.new ? 'border-red-300' : 'border-gray-200'}`}
+                  placeholder="Min. 8 karakter"
+                  className={`w-full p-4 rounded-xl text-sm font-medium border outline-none focus:ring-2 ${errors.new ? 'border-red-300 focus:ring-red-100' : 'border-gray-200 focus:border-[#4CAF50] focus:ring-green-100'}`}
                   value={passwords.new}
                   onChange={(e) => {setPasswords({...passwords, new: e.target.value}); setErrors({...errors, new: ""});}}
                 />
-                {errors.new && <p className="text-red-400 text-[10px] italic mt-1 ml-1">{errors.new}</p>}
+                {errors.new && <p className="text-red-500 text-[11px] font-bold mt-1.5">{errors.new}</p>}
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-600 ml-1">Konfirmasi Password Baru</label>
+                <label className="text-sm font-bold text-gray-700 mb-2 block">Konfirmasi Password Baru</label>
                 <input 
                   type="password"
                   placeholder="Ulangi password baru"
-                  className={`w-full px-4 py-3 border rounded-xl outline-none text-sm focus:border-[#4CAF50] ${errors.confirm ? 'border-red-300' : 'border-gray-200'}`}
+                  className={`w-full p-4 rounded-xl text-sm font-medium border outline-none focus:ring-2 ${errors.confirm ? 'border-red-300 focus:ring-red-100' : 'border-gray-200 focus:border-[#4CAF50] focus:ring-green-100'}`}
                   value={passwords.confirm}
                   onChange={(e) => {setPasswords({...passwords, confirm: e.target.value}); setErrors({...errors, confirm: ""});}}
                 />
-                {errors.confirm && <p className="text-red-400 text-[10px] italic mt-1 ml-1">{errors.confirm}</p>}
+                {errors.confirm && <p className="text-red-500 text-[11px] font-bold mt-1.5">{errors.confirm}</p>}
               </div>
 
-              <button 
-                onClick={handleUpdatePassword}
-                className="w-full border border-gray-300 text-gray-800 font-bold py-3 rounded-full mt-2 hover:bg-gray-50 transition-colors"
-              >
-                Simpan Perubahan Password
-              </button>
+              <div className="flex gap-3 pt-2">
+                <button 
+                  onClick={() => setShowPasswordForm(false)}
+                  className="flex-1 bg-white border border-gray-200 text-gray-600 font-bold py-4 rounded-xl hover:bg-gray-50 transition-colors"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={handleUpdatePassword}
+                  className="flex-1 bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-gray-800 transition-colors"
+                >
+                  Simpan 
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         <button 
           onClick={handleLogout}
-          className="w-full border border-red-200 bg-white text-red-500 font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-red-50 transition-colors"
+          className="w-full bg-white border border-red-200 text-red-500 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-50 transition-colors shadow-sm"
         >
           <LogOut size={18} /> Logout
         </button>
       </section>
 
-      {/* MODAL SUKSES */}
+      {/* MODAL SUKSES (Dipertahankan dan dipercantik) */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-6">
-          <div className="absolute inset-0 bg-white/40 backdrop-blur-sm"></div>
-          <div className="bg-white border border-gray-100 rounded-[30px] w-full max-w-sm p-10 relative z-10 shadow-2xl flex flex-col items-center text-center">
-            <div className="w-16 h-16 border border-green-500 rounded-full flex items-center justify-center mb-6">
-              <CheckCircle2 size={32} className="text-[#4CAF50]" />
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => { setShowSuccessModal(false); if(successMessage.includes("Password")) setShowPasswordForm(false); }}></div>
+          <div className="bg-white border border-gray-100 rounded-[32px] w-full max-w-sm p-10 relative z-10 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+            <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
+              <CheckCircle2 size={40} className="text-[#4CAF50]" />
             </div>
-            <h3 className="text-lg font-bold mb-8">{successMessage}</h3>
+            <h3 className="text-xl font-black text-gray-900 mb-8">{successMessage}</h3>
             <button 
               onClick={() => { setShowSuccessModal(false); if(successMessage.includes("Password")) setShowPasswordForm(false); }}
-              className="w-full bg-[#4CAF50] text-white font-bold py-3 rounded-xl"
+              className="w-full bg-[#4CAF50] text-white font-bold py-4 rounded-xl hover:bg-green-600 shadow-lg shadow-green-100"
             >
               Oke
             </button>

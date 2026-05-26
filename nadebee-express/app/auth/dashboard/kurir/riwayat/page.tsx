@@ -1,37 +1,28 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Search,
-  Filter,
-  Star,
-  MapPin,
-  Clock,
-  Calendar,
-  XCircle,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Search, Filter, Star, MapPin, Clock, Calendar, XCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export default function RiwayatPage() {
   const [showFilter, setShowFilter] = useState(false);
   const [selectedRating, setSelectedRating] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
   
-  // State Dinamis dari Supabase
+  // State Data Dinamis Supabase
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-useEffect(() => {
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4;
+
+  useEffect(() => {
     const fetchHistory = async () => {
       try {
         setLoading(true);
         const savedCourierId = sessionStorage.getItem("loggedInCourierId") || "a2c08fd2-ccc2-4271-8a7b-b74870c9dd60";
 
-        // Tarik data yang statusnya 'Selesai'
-        // PERBAIKAN: Menggunakan created_at sebagai patokan urutan
         const { data, error } = await supabase
           .from("shipments")
           .select("*")
@@ -42,22 +33,22 @@ useEffect(() => {
         if (error) throw error;
 
         if (data) {
-          // KUNCI LOGIKA: Hanya tampilkan yang sudah di-rating oleh pelanggan (> 0)
-          const ratedShipments = data.filter((item: any) => item.rating && item.rating > 0);
-
-          const formattedObject = ratedShipments.map((item: any) => {
-            // PERBAIKAN: Menggunakan created_at
+          // OPSI B: Tampilkan semua paket yang berstatus "Selesai" (tidak perlu filter rating lagi)
+          const formattedObject = data.map((item: any) => {
             const dateObj = new Date(item.created_at);
+            const hasRating = item.rating && item.rating > 0;
+            
             return {
               id: item.resi_number,
               customer: item.sender_name,
               status: item.status,
               price: `Rp ${item.shipping_cost?.toLocaleString('id-ID') || 0}`,
-              rating: item.rating,
-              route: `${item.sender_address.substring(0, 15)}... → ${item.receiver_address.substring(0, 15)}...`,
+              rating: item.rating || 0, // Jika belum ada rating, jadikan 0
+              route: `${item.sender_address} → ${item.receiver_address}`,
               duration: "Selesai", 
               date: dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-              review: item.review || "Tidak ada ulasan tertulis",
+              // Jika belum ada rating, tampilkan teks menunggu ulasan
+              review: hasRating ? (item.review || "Tidak ada ulasan tertulis") : "Menunggu ulasan pelanggan...",
             };
           });
 
@@ -71,57 +62,61 @@ useEffect(() => {
     };
 
     fetchHistory();
+    
+    // Tambahan Opsional: Pasang Radar Realtime agar saat pelanggan ngasih rating, layar kurir otomatis update!
+    const channel = supabase
+      .channel('kurir-history-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'shipments' },
+        () => { fetchHistory(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ==========================================
-  // FILTER & SEARCH
-  // ==========================================
+  // Filter & Search Logic
   const filteredData = historyData.filter((item) => {
     const matchesSearch =
       item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.customer.toLowerCase().includes(searchQuery.toLowerCase());
 
+    // Fitur filter bintang juga kita sesuaikan
     const matchesRating =
       selectedRating === "Semua" ||
+      (selectedRating === "Belum Dinilai" && item.rating === 0) || // Tambahan filter belum dinilai
       item.rating.toString() === selectedRating;
 
     return matchesSearch && matchesRating;
   });
 
-  // ==========================================
-  // PAGINATION
-  // ==========================================
-  const itemsPerPage = 4;
+  // Perhitungan Pagination
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
-
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedData = filteredData.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
+  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+
+  const renderPaginationButtons = () => {
+    const buttons = [];
+    for (let i = 1; i <= totalPages; i++) {
+      buttons.push(i);
+    }
+    return buttons;
+  };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-20">
-      {/* Header */}
+    <div className="max-w-5xl mx-auto space-y-6 pb-20 px-4 md:px-0 pt-6">
       <div>
-        <h1 className="text-2xl font-black text-gray-900">
-          Riwayat Pickup
-        </h1>
-        <p className="text-sm text-gray-500 font-medium">
-          Menampilkan ringkasan pickup yang telah disetujui pelanggan
-        </p>
+        <h1 className="text-2xl font-black text-gray-900">Riwayat Pickup</h1>
+        <p className="text-sm text-gray-500 font-medium">Menampilkan ringkasan seluruh pickup yang telah selesai</p>
       </div>
 
-      {/* Search Bar */}
       <div className="relative">
-        <Search
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-          size={20}
-        />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
         <input
           type="text"
           placeholder="cari berdasarkan nomor resi atau nama"
-          className="w-full pl-12 pr-4 py-3 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 transition-all font-medium"
+          className="w-full pl-12 pr-4 py-3 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 font-medium"
           value={searchQuery}
           onChange={(e) => {
             setSearchQuery(e.target.value);
@@ -130,68 +125,27 @@ useEffect(() => {
         />
       </div>
 
-      {/* Filter */}
       <div className="relative inline-block">
         <button
           onClick={() => setShowFilter(!showFilter)}
           className={`flex items-center gap-2 px-6 py-2 border rounded-lg text-sm font-bold transition-all ${
-            selectedRating !== "Semua"
-              ? "bg-green-50 border-green-500 text-green-600"
-              : "bg-white border-gray-300 text-gray-600 hover:bg-gray-50"
+            selectedRating !== "Semua" ? "bg-green-50 border-green-500 text-green-600" : "bg-white border-gray-300 text-gray-600 hover:bg-gray-50"
           }`}
         >
           <Filter size={16} />
-          {selectedRating === "Semua"
-            ? "Filter"
-            : `Rating ${selectedRating}`}
+          {selectedRating === "Semua" ? "Filter" : selectedRating === "Belum Dinilai" ? "Belum Dinilai" : `Rating ${selectedRating}`}
         </button>
 
-        {/* Dropdown */}
         {showFilter && (
-          <div className="absolute left-0 mt-2 w-72 bg-white border border-gray-300 rounded-2xl shadow-xl z-50 p-5">
-            <p className="text-sm font-black text-gray-700 mb-4 tracking-tight">
-              Rating
-            </p>
-
+          <div className="absolute left-0 mt-2 w-[340px] bg-white border border-gray-300 rounded-2xl shadow-xl z-50 p-5">
+            <p className="text-sm font-black text-gray-700 mb-4">Rating</p>
             <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => {
-                  setSelectedRating("Semua");
-                  setCurrentPage(1);
-                  setShowFilter(false);
-                }}
-                className={`py-2 rounded-full text-xs font-bold transition-all ${
-                  selectedRating === "Semua"
-                    ? "bg-[#F3D45F] text-gray-900"
-                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                }`}
-              >
-                Semua
-              </button>
-
+              <button onClick={() => { setSelectedRating("Semua"); setCurrentPage(1); setShowFilter(false); }} className={`py-2 rounded-full text-xs font-bold ${selectedRating === "Semua" ? "bg-[#F3D45F] text-gray-900" : "bg-gray-100 text-gray-500"}`}>Semua</button>
+              <button onClick={() => { setSelectedRating("Belum Dinilai"); setCurrentPage(1); setShowFilter(false); }} className={`py-2 rounded-full text-xs font-bold col-span-2 ${selectedRating === "Belum Dinilai" ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-500"}`}>Belum Dinilai</button>
+              
               {[1, 2, 3, 4, 5].map((num) => (
-                <button
-                  key={num}
-                  onClick={() => {
-                    setSelectedRating(num.toString());
-                    setCurrentPage(1);
-                    setShowFilter(false);
-                  }}
-                  className={`flex items-center justify-center gap-1 py-2 rounded-full text-xs font-bold transition-all ${
-                    selectedRating === num.toString()
-                      ? "bg-[#F3D45F] text-gray-900"
-                      : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                  }`}
-                >
-                  <Star
-                    size={12}
-                    fill={
-                      selectedRating === num.toString()
-                        ? "black"
-                        : "none"
-                    }
-                  />
-                  {num}
+                <button key={num} onClick={() => { setSelectedRating(num.toString()); setCurrentPage(1); setShowFilter(false); }} className={`flex items-center justify-center gap-1 py-2 rounded-full text-xs font-bold ${selectedRating === num.toString() ? "bg-[#F3D45F] text-gray-900" : "bg-gray-100 text-gray-500"}`}>
+                  <Star size={12} fill={selectedRating === num.toString() ? "black" : "none"} />{num}
                 </button>
               ))}
             </div>
@@ -199,162 +153,113 @@ useEffect(() => {
         )}
       </div>
 
-      {/* List Riwayat */}
-      <div className="space-y-6">
-        {loading ? (
-          <div className="text-center py-12 text-[#4CAF50] font-bold animate-pulse">
-            Memuat riwayat pekerjaanmu...
-          </div>
-        ) : filteredData.length > 0 ? (
-          <>
-            {paginatedData.map((item, index) => (
-              <div
-                key={index}
-                className="bg-white border border-green-500 rounded-[24px] p-8 shadow-sm group hover:shadow-md transition-all relative"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-lg font-black text-gray-900">
-                          {item.customer}
-                        </h3>
-
-                        <span className="bg-green-50 text-green-500 text-[10px] font-black px-4 py-1 rounded-full border border-green-100 uppercase">
-                          {item.status}
-                        </span>
+      {/* --- KUNCI PAGINATION DIAM: flex-col & justify-between & min-h --- */}
+      <div className="flex flex-col justify-between min-h-[480px]">
+        <div className="space-y-6">
+          {loading ? (
+            <div className="text-center py-12 text-[#4CAF50] font-bold animate-pulse">Memuat riwayat pekerjaanmu...</div>
+          ) : filteredData.length > 0 ? (
+            <>
+              {paginatedData.map((item, index) => (
+                <div key={index} className="bg-white border border-green-500 rounded-[24px] p-8 shadow-sm relative">
+                  <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                    
+                    <div className="space-y-4 flex-1">
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-lg font-black text-gray-900">{item.customer}</h3>
+                          <span className="bg-green-50 text-green-500 text-[10px] font-black px-4 py-1 rounded-full border border-green-100 uppercase">{item.status}</span>
+                        </div>
+                        <p className="text-xs font-bold text-gray-400 mt-0.5">{item.id}</p>
                       </div>
 
-                      <p className="text-xs font-bold text-gray-400 mt-0.5 tracking-wider">
-                        {item.id}
+                      <div className="space-y-2 text-gray-500 text-sm font-medium">
+                        <div className="flex items-start gap-3">
+                          <MapPin size={16} className="text-gray-300 mt-0.5 shrink-0" />
+                          <span className="leading-snug pr-4">{item.route}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Clock size={16} className="text-gray-300 shrink-0" />
+                          <span>Durasi: {item.duration}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Calendar size={16} className="text-gray-300 shrink-0" />
+                          <span>{item.date}</span>
+                        </div>
+                      </div>
+                      
+                      <p className={`text-sm font-medium italic p-3 rounded-xl border ${item.rating === 0 ? "text-orange-400 bg-orange-50 border-orange-100" : "text-gray-500 bg-gray-50 border-gray-100"}`}>
+                        {item.rating === 0 ? "⏳ " : `"`}{item.review}{item.rating === 0 ? "" : `"`}
                       </p>
                     </div>
 
-                    <div className="space-y-2 text-gray-500 font-medium text-sm">
-                      <div className="flex items-center gap-3">
-                        <MapPin
-                          size={16}
-                          className="text-gray-300"
-                        />
-                        <span>{item.route}</span>
+                    <div className="text-left md:text-right space-y-4 shrink-0">
+                      <p className="text-xl font-black text-green-600">{item.price}</p>
+                      <div className="flex justify-start md:justify-end gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star 
+                            key={star} 
+                            size={18} 
+                            className={star <= item.rating ? "text-[#F3D45F]" : "text-gray-200"} 
+                            fill={star <= item.rating ? "#F3D45F" : "none"} 
+                          />
+                        ))}
                       </div>
-
-                      <div className="flex items-center gap-3">
-                        <Clock
-                          size={16}
-                          className="text-gray-300"
-                        />
-                        <span>Durasi: {item.duration}</span>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <Calendar
-                          size={16}
-                          className="text-gray-300"
-                        />
-                        <span>{item.date}</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-2">
-                      <p className="text-sm font-medium italic text-gray-500">
-                        "{item.review}"
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-right space-y-4">
-                    <p className="text-xl font-black text-green-600">
-                      {item.price}
-                    </p>
-
-                    <div className="flex justify-end gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          size={18}
-                          className={
-                            star <= item.rating
-                              ? "text-[#F3D45F]"
-                              : "text-gray-200"
-                          }
-                          fill={
-                            star <= item.rating
-                              ? "#F3D45F"
-                              : "none"
-                          }
-                        />
-                      ))}
                     </div>
                   </div>
                 </div>
+              ))}
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 bg-white border-2 border-dashed border-gray-200 rounded-[32px] space-y-4">
+              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300"><XCircle size={48} /></div>
+              <div className="text-center">
+                <p className="text-gray-600 font-black text-xl">Belum Ada Riwayat</p>
+                <p className="text-gray-400 font-medium">Selesaikan pesanan untuk memunculkan riwayat di sini.</p>
               </div>
-            ))}
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center pt-4">
-                <div className="flex overflow-hidden rounded-2xl border border-gray-300 bg-white">
-                  <button
-                    onClick={() => setCurrentPage((prev) => prev - 1)}
-                    disabled={currentPage === 1}
-                    className="w-14 h-12 flex items-center justify-center border-r border-gray-300 text-gray-400 disabled:opacity-50"
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-
-                  {[...Array(totalPages)].map((_, index) => {
-                    const page = index + 1;
-                    return (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`w-14 h-12 text-sm font-bold border-r border-gray-300 transition-all ${
-                          currentPage === page
-                            ? "bg-[#00B14F] text-white"
-                            : "bg-[#F5F5F5] text-[#2B3A55]"
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    );
-                  })}
-
-                  <button
-                    onClick={() => setCurrentPage((prev) => prev + 1)}
-                    disabled={currentPage === totalPages}
-                    className="w-14 h-12 flex items-center justify-center text-[#2B3A55] disabled:opacity-50"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-20 bg-white border-2 border-dashed border-gray-200 rounded-[32px] space-y-4">
-            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300">
-              <XCircle size={48} strokeWidth={1.5} />
             </div>
+          )}
+        </div>
 
-            <div className="text-center">
-              <p className="text-gray-600 font-black text-xl">
-                Belum Ada Riwayat
-              </p>
-              <p className="text-gray-400 font-medium">
-                Selesaikan pesanan dan tunggu penilaian dari pelanggan.
-              </p>
-            </div>
+        {/* --- PAGINATION --- */}
+        {!loading && filteredData.length > 0 && (
+          <div className="flex items-center justify-center gap-1 mt-10">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={`w-10 h-10 border rounded-l-xl flex items-center justify-center font-bold text-sm transition-all border-gray-200 ${
+                currentPage === 1 ? "bg-white text-gray-300 cursor-not-allowed" : "bg-white text-gray-600 hover:bg-gray-50 active:scale-95"
+              }`}
+            >
+              ←
+            </button>
+
+            {renderPaginationButtons().map((page) => {
+              const isSelected = currentPage === page;
+              return (
+                <button
+                  key={`page-${page}`}
+                  type="button"
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-10 h-10 font-bold text-sm transition-all border-y border-x border-gray-200 flex items-center justify-center ${
+                    isSelected ? "bg-green-600 text-white border-green-600 shadow-sm font-semibold" : "bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {page}
+                </button>
+              );
+            })}
 
             <button
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedRating("Semua");
-                setCurrentPage(1);
-              }}
-              className="text-green-500 font-bold hover:underline"
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`w-10 h-10 border rounded-r-xl flex items-center justify-center font-bold text-sm transition-all border-gray-200 ${
+                currentPage === totalPages ? "bg-white text-gray-300 cursor-not-allowed" : "bg-white text-gray-600 hover:bg-gray-50 active:scale-95"
+              }`}
             >
-              Reset Filter
+              →
             </button>
           </div>
         )}

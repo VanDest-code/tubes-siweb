@@ -1,225 +1,225 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Truck, Edit3, Lock, CheckCircle2 } from "lucide-react";
-import { supabase } from "@/lib/supabase"; // Pastikan path ini benar
+import { User, Mail, Phone, Edit2, Check, Lock } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
-export default function ProfilPage() {
-  const [isEditing, setIsEditing] = useState(false);
-  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+export default function ProfilKurirPage() {
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Simulasi Login: Menggunakan ID Budi dari database-mu
-  const courierId = "a2c08fd2-ccc2-4271-8a7b-b74870c9dd60";
+  // Data Kurir
+  const [courierData, setCourierData] = useState({
+    id: "",
+    username: "",
+    email: "",
+    phone: "",
+  });
 
-  // State untuk data form
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState(""); 
-  const [phone, setPhone] = useState("");
-  const [vehicle, setVehicle] = useState("");
-  
-  // State untuk statistik
-  const [stats, setStats] = useState({ total: 0, rating: 0, onTime: 0 });
+  // Statistik Database Asli
+  const [stats, setStats] = useState({
+    totalPengiriman: 0,
+    avgRating: "0.0",
+    pesananAktif: 0,
+  });
 
-  // Tarik data profil dari Supabase saat halaman dimuat
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("couriers")
-          .select("*")
-          .eq("id", courierId)
-          .single();
-
-        if (error) throw error;
-        
-        if (data) {
-          setUsername(data.username || "");
-          setEmail(data.email || "");
-          setPhone(data.phone || "");
-          setVehicle(data.vehicle || "Belum diatur");
-          setStats({
-            total: data.total_pengiriman || 0,
-            rating: data.rating || 0,
-            onTime: data.on_time_percentage || 0
-          });
-        }
-      } catch (error) {
-        console.error("Gagal memuat profil:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
+    fetchProfileAndStats();
   }, []);
 
-  // Fungsi simpan update ke database
-  const handleSave = async () => {
+  const fetchProfileAndStats = async () => {
     try {
+      setLoading(true);
+      const savedCourierId = sessionStorage.getItem("loggedInCourierId") || "a2c08fd2-ccc2-4271-8a7b-b74870c9dd60";
+
+      // 1. Tarik Data Profil Kurir
+      const { data: profile, error: profileError } = await supabase
+        .from("couriers")
+        .select("*")
+        .eq("id", savedCourierId)
+        .single();
+
+      if (profileError) throw profileError;
+
+      if (profile) {
+        setCourierData({
+          id: profile.id,
+          username: profile.username || "Kurir",
+          email: profile.email || "",
+          phone: profile.phone || "",
+        });
+      }
+
+      // 2. Tarik Data Pesanan untuk Statistik (Sesuai Database)
+      const { data: shipments, error: shipError } = await supabase
+        .from("shipments")
+        .select("status, rating")
+        .eq("courier_id", savedCourierId);
+
+      if (shipError) throw shipError;
+
+      if (shipments) {
+        let selesai = 0;
+        let totalBintang = 0;
+        let jumlahPemberiRating = 0;
+        let aktif = 0;
+
+        shipments.forEach((task) => {
+          const status = (task.status || "").toLowerCase().trim();
+          
+          if (status === "selesai") {
+            selesai++;
+            if (task.rating && task.rating > 0) {
+              totalBintang += task.rating;
+              jumlahPemberiRating++;
+            }
+          } else if (status !== "dibatalkan" && status !== "ditolak" && status !== "menunggu kurir") {
+            // Hitung yang sedang di jalan / diambil
+            aktif++;
+          }
+        });
+
+        const rataRataRating = jumlahPemberiRating > 0 
+          ? (totalBintang / jumlahPemberiRating).toFixed(1) 
+          : "0.0";
+
+        setStats({
+          totalPengiriman: selesai,
+          avgRating: rataRataRating,
+          pesananAktif: aktif, // Pengganti "On-Time"
+        });
+      }
+
+    } catch (error) {
+      console.error("Gagal memuat profil:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      setIsSaving(true);
       const { error } = await supabase
         .from("couriers")
-        .update({ username, phone, vehicle })
-        .eq("id", courierId);
+        .update({
+          username: courierData.username,
+          phone: courierData.phone,
+        })
+        .eq("id", courierData.id);
 
       if (error) throw error;
       
       setIsEditing(false);
-      setShowSaveSuccess(true);
     } catch (error) {
-      console.error("Gagal menyimpan perubahan:", error);
-      alert("Gagal menyimpan, silakan coba lagi.");
+      console.error("Gagal update profil:", error);
+      alert("Gagal menyimpan profil.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  if (loading) {
-    return <div className="text-center py-20 font-bold text-[#4CAF50] animate-pulse">Memuat Profil...</div>;
-  }
-
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-20 relative">
-      {/* POP-UP SUKSES SIMPAN */}
-      {showSaveSuccess && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
-          <div className="bg-white rounded-[32px] p-10 max-w-sm w-full text-center relative z-10 shadow-2xl animate-in zoom-in duration-300">
-            <div className="w-16 h-16 border-2 border-green-500 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle2 size={32} />
+    <div className="max-w-3xl mx-auto space-y-6 pb-20 px-4 md:px-0 pt-6">
+      
+      <div className="text-center mb-10">
+        <h1 className="text-2xl font-black text-gray-900">Profil Kurir</h1>
+        <p className="text-sm text-gray-500 font-medium mt-1">Kelola informasi akunmu</p>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-20 text-[#4CAF50] font-bold animate-pulse">Memuat data profil...</div>
+      ) : (
+        <div className="space-y-6">
+          
+          {/* --- KARTU STATISTIK ATAS --- */}
+          <div className="bg-white border border-green-400 rounded-[32px] p-8 shadow-sm flex flex-col items-center">
+            
+            <div className="w-24 h-24 border-2 border-green-500 rounded-full flex items-center justify-center text-green-500 bg-green-50 mb-4">
+              <User size={40} />
             </div>
-            <h2 className="text-lg font-bold text-gray-900 mb-8">Perubahan Berhasil Disimpan</h2>
-            <button 
-              onClick={() => setShowSaveSuccess(false)}
-              className="w-full bg-[#4CAF50] text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-colors"
-            >
-              Oke
-            </button>
+            <h2 className="text-xl font-black text-gray-900 mb-8">{courierData.username}</h2>
+
+            <div className="flex w-full justify-between px-4 md:px-12 text-center divide-x divide-gray-100">
+              <div className="flex-1">
+                <p className="text-3xl font-black text-[#4CAF50] mb-1">{stats.totalPengiriman}</p>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Pengiriman</p>
+              </div>
+              <div className="flex-1">
+                <p className="text-3xl font-black text-orange-400 mb-1">{stats.avgRating}</p>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Rating</p>
+              </div>
+              <div className="flex-1">
+                <p className="text-3xl font-black text-blue-500 mb-1">{stats.pesananAktif}</p>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Pesanan Aktif</p>
+              </div>
+            </div>
+          </div>
+
+          {/* --- KARTU INFORMASI PRIBADI (BEBAS KENDARAAN) --- */}
+          <div className="bg-white border border-green-400 rounded-[32px] p-8 md:p-10 shadow-sm relative">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-lg font-black text-gray-900">Informasi Pribadi</h3>
+              <button 
+                onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
+                disabled={isSaving}
+                className="w-10 h-10 rounded-full flex items-center justify-center bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+              >
+                {isEditing ? <Check size={18} /> : <Edit2 size={18} />}
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              
+              {/* Field Username */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                  <User size={16} /> Username
+                </label>
+                <input
+                  type="text"
+                  value={courierData.username}
+                  onChange={(e) => setCourierData({...courierData, username: e.target.value})}
+                  disabled={!isEditing}
+                  className={`w-full p-4 rounded-xl text-sm font-medium border ${isEditing ? "bg-white border-green-400 focus:ring-2 focus:ring-green-100 outline-none text-black" : "bg-gray-50/50 border-gray-100 text-gray-500"}`}
+                />
+              </div>
+
+              {/* Field Email (Terkunci) */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                  <Mail size={16} /> Email
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={courierData.email}
+                    disabled
+                    className="w-full p-4 rounded-xl text-sm font-medium border bg-green-50/30 border-green-100 text-gray-500 pr-12"
+                  />
+                  <Lock size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                </div>
+              </div>
+
+              {/* Field Nomor Telepon */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                  <Phone size={16} /> Nomor Telepon
+                </label>
+                <input
+                  type="text"
+                  value={courierData.phone}
+                  onChange={(e) => setCourierData({...courierData, phone: e.target.value})}
+                  disabled={!isEditing}
+                  className={`w-full p-4 rounded-xl text-sm font-medium border ${isEditing ? "bg-white border-green-400 focus:ring-2 focus:ring-green-100 outline-none text-black" : "bg-gray-50/50 border-gray-100 text-gray-500"}`}
+                />
+              </div>
+
+            </div>
           </div>
         </div>
       )}
-
-      {/* Header Halaman */}
-      <div className="text-center">
-        <h1 className="text-2xl font-black text-gray-900">Profil Kurir</h1>
-        <p className="text-sm text-gray-500 font-medium">Kelola Informasi akunmu</p>
-      </div>
-
-      {/* 1. Card Statistik Profil */}
-      <div className="bg-white border border-green-500 rounded-[32px] p-8 shadow-sm">
-        <div className="flex flex-col items-center">
-          <div className="w-24 h-24 bg-white border border-green-500 rounded-full flex items-center justify-center mb-4">
-            <User size={40} className="text-green-500" />
-          </div>
-          <h2 className="text-xl font-black text-gray-900 mb-8">{username}</h2>
-
-          <div className="flex w-full items-center justify-between px-4">
-            <div className="text-center flex-1">
-              <p className="text-2xl font-black text-green-600">{stats.total}</p>
-              <p className="text-xs font-bold text-gray-400 mt-1">Pengiriman</p>
-            </div>
-            <div className="w-px h-12 bg-gray-200"></div>
-            <div className="text-center flex-1">
-              <p className="text-2xl font-black text-[#F3D45F]">{stats.rating.toFixed(1)}</p>
-              <p className="text-xs font-bold text-gray-400 mt-1">Rating</p>
-            </div>
-            <div className="w-px h-12 bg-gray-200"></div>
-            <div className="text-center flex-1">
-              <p className="text-2xl font-black text-blue-500">{stats.onTime}</p>
-              <p className="text-xs font-bold text-gray-400 mt-1">On-Time</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Card Informasi Pribadi */}
-      <div className="bg-white border border-green-500 rounded-[32px] p-8 shadow-sm space-y-6">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-xl font-black text-gray-900">Informasi Pribadi</h3>
-          <button 
-            onClick={() => setIsEditing(!isEditing)}
-            className={`transition-all p-2 rounded-lg ${isEditing ? "bg-green-500 text-white" : "text-green-500 hover:bg-green-50"}`}
-          >
-            <Edit3 size={20} />
-          </button>
-        </div>
-
-        <div className="space-y-4 text-sm">
-          {/* Username */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 font-black text-gray-600 italic">
-              <User size={16} /> Username
-            </label>
-            <input 
-              type="text"
-              value={username}
-              disabled={!isEditing}
-              onChange={(e) => setUsername(e.target.value)}
-              className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-100 font-medium transition-all ${
-                isEditing ? "border-green-400 text-gray-900" : "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-              }`}
-            />
-          </div>
-
-          {/* Email */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 font-black text-gray-600 italic">
-              <Mail size={16} /> Email
-            </label>
-            <div className="relative">
-              <input 
-                type="email"
-                value={email}
-                disabled
-                className="w-full p-3 bg-green-50 border border-green-200 rounded-xl text-gray-400 font-medium cursor-not-allowed"
-              />
-              <Lock size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300" />
-            </div>
-          </div>
-
-          {/* Nomor Telepon */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 font-black text-gray-600 italic">
-              <Phone size={16} /> Nomor Telepon
-            </label>
-            <input 
-              type="text"
-              value={phone}
-              disabled={!isEditing}
-              onChange={(e) => setPhone(e.target.value)}
-              className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-100 font-medium transition-all ${
-                isEditing ? "border-green-400 text-gray-900" : "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-              }`}
-            />
-          </div>
-
-          {/* Kendaraan */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 font-black text-gray-600 italic">
-              <Truck size={16} /> Kendaraan
-            </label>
-            <input 
-              type="text"
-              value={vehicle}
-              disabled={!isEditing}
-              onChange={(e) => setVehicle(e.target.value)}
-              className={`w-full p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-100 font-medium transition-all ${
-                isEditing ? "border-green-400 text-gray-900" : "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-              }`}
-            />
-          </div>
-        </div>
-
-        {/* Submit Button */}
-        {isEditing && (
-          <div className="pt-4 flex justify-center animate-in fade-in slide-in-from-top-2 duration-300">
-            <button 
-              onClick={handleSave}
-              className="w-3/5 bg-[#4CAF50] text-white font-bold py-3.5 rounded-full hover:bg-green-600 transition-all shadow-lg shadow-green-100 text-sm"
-            >
-              Simpan Profil
-            </button>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

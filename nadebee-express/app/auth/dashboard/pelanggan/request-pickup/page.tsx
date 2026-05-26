@@ -1,12 +1,12 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation"; // Import router
+import { useRouter } from "next/navigation"; 
 import Sidebar from "@/components/layout/Sidebar";
 import { ChevronDown } from "lucide-react";
 
 export default function RequestPickupPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const router = useRouter(); // Inisialisasi router
+  const router = useRouter(); 
   
   const [formData, setFormData] = useState({
     senderName: "", senderPhone: "", senderAddress: "",
@@ -30,10 +30,23 @@ export default function RequestPickupPage() {
     
     setErrors(newErrors);
 
-    // Jika tidak ada error, pindah ke halaman pilih kurir
+    // Jika tidak ada error, eksekusi logika pintar penentuan kendaraan
     if (Object.keys(newErrors).length === 0) {
-    sessionStorage.setItem("pickupData", JSON.stringify(formData));
-    router.push("/auth/dashboard/pelanggan/request-pickup/pilih-kurir");
+      
+      // LOGIKA OTOMATIS: Penentuan jenis kendaraan berdasarkan berat
+      let calculatedVehicle = "Motor";
+      if (formData.weight === "5-10 kg") {
+        calculatedVehicle = "Mobil";
+      }
+
+      // Gabungkan data form dengan data kendaraan otomatis
+      const finalDataToSubmit = {
+        ...formData,
+        vehicleType: calculatedVehicle // Field tersembunyi untuk Supabase
+      };
+
+      sessionStorage.setItem("pickupData", JSON.stringify(finalDataToSubmit));
+      router.push("/auth/dashboard/pelanggan/request-pickup/pilih-kurir");
     }
   };
 
@@ -61,11 +74,12 @@ export default function RequestPickupPage() {
               onChange={(v: string) => setFormData({...formData, receiverName: v})} />
             <InputField label="No.Telepon" placeholder="Masukkan no.telepon" error={errors.receiverPhone} 
               onChange={(v: string) => setFormData({...formData, receiverPhone: v})} />
-            <InputField label="Alamat Pickup" placeholder="Masukkan alamat" error={errors.receiverAddress} 
+            <InputField label="Alamat Tujuan" placeholder="Masukkan alamat" error={errors.receiverAddress} 
               onChange={(v: string) => setFormData({...formData, receiverAddress: v})} />
           </SectionCard>
         </div>
 
+        {/* Kembali ke layout 3 kolom yang estetik */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <DropdownField 
             label="Jenis Barang" 
@@ -76,7 +90,7 @@ export default function RequestPickupPage() {
           />
           <DropdownField 
             label="Wilayah Tujuan" 
-            placeholder={formData.destination || "Pilih wilayah pengiriman"} 
+            placeholder={formData.destination || "Pilih wilayah"} 
             error={errors.destination}
             isTable
             options={[
@@ -88,7 +102,7 @@ export default function RequestPickupPage() {
           />
           <DropdownField 
             label="Prediksi Berat" 
-            placeholder={formData.weight || "Pilih berat barang"} 
+            placeholder={formData.weight || "Pilih berat"} 
             error={errors.weight}
             options={["< 1 kg", "1-5 kg", "5-10 kg"]}
             onSelect={(v: string) => setFormData({...formData, weight: v})}
@@ -115,11 +129,9 @@ export default function RequestPickupPage() {
   );
 }
 
-// --- SUB-COMPONENTS DENGAN TYPE DEFINITION ---
-
 function SectionCard({ title, children }: { title: string, children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-black rounded-[25px] p-7 shadow-sm">
+    <div className="bg-white border border-black rounded-[25px] p-7 shadow-sm flex-1">
       <h3 className="font-bold mb-5 text-[16px]">{title}</h3>
       <div className="space-y-4">{children}</div>
     </div>
@@ -132,10 +144,10 @@ function InputField({ label, placeholder, error, onChange }: { label: string, pl
       <label className="text-[13px] font-bold ml-1">{label}</label>
       <input 
         onChange={(e) => onChange(e.target.value)}
-        className={`bg-[#EBF5EB] border ${error ? 'border-red-400' : 'border-[#A5D6A7]'} rounded-xl px-4 py-3 outline-none text-sm placeholder:text-gray-400`}
+        className={`bg-[#EBF5EB] border ${error ? 'border-red-400 focus:ring-red-100' : 'border-[#A5D6A7] focus:border-green-500'} rounded-xl px-4 py-3 outline-none text-sm placeholder:text-gray-400 focus:ring-2 focus:ring-green-100 transition-all`}
         placeholder={placeholder}
       />
-      {error && <span className="text-[11px] text-red-500 italic ml-1">{error}</span>}
+      {error && <span className="text-[11px] text-red-500 font-bold italic ml-1 mt-0.5">{error}</span>}
     </div>
   );
 }
@@ -143,16 +155,16 @@ function InputField({ label, placeholder, error, onChange }: { label: string, pl
 function DropdownField({ label, placeholder, error, options, onSelect, isTable }: any) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="bg-white border border-black rounded-[25px] p-7 relative">
+    <div className="bg-white border border-black rounded-[25px] p-7 relative h-full flex flex-col">
       <h3 className="font-bold mb-4 text-[15px]">{label}</h3>
       <div 
         onClick={() => setOpen(!open)}
-        className={`bg-[#EBF5EB] border ${error ? 'border-red-400' : 'border-[#A5D6A7]'} rounded-xl px-4 py-3 flex justify-between items-center cursor-pointer`}
+        className={`bg-[#EBF5EB] border ${error ? 'border-red-400' : 'border-[#A5D6A7] hover:border-green-500'} rounded-xl px-4 py-3 flex justify-between items-center cursor-pointer transition-colors mt-auto`}
       >
-        <span className={`text-sm ${placeholder.includes("Pilih") ? 'text-gray-400' : 'text-black font-medium'}`}>{placeholder}</span>
+        <span className={`text-sm ${placeholder.includes("Pilih") ? 'text-gray-400' : 'text-black font-bold'}`}>{placeholder}</span>
         <ChevronDown size={18} className={`text-green-600 transition-transform ${open ? 'rotate-180' : ''}`} />
       </div>
-      {error && <span className="text-[11px] text-red-500 italic mt-1 block">{error}</span>}
+      {error && <span className="text-[11px] text-red-500 font-bold italic mt-1 block absolute bottom-2 left-7">{error}</span>}
 
       {open && (
         <div className="absolute left-7 right-7 top-[110px] z-20 bg-white border border-black rounded-lg overflow-hidden shadow-xl">

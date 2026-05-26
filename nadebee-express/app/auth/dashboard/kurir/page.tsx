@@ -1,7 +1,7 @@
 "use client"; 
 
 import { useState, useEffect } from "react";
-import { Wallet, Package, Truck, CheckCircle2 } from "lucide-react"; // Ikon diubah menyesuaikan "Total Pickup"
+import { Wallet, Package, Truck, CheckCircle2 } from "lucide-react"; 
 import { supabase } from "@/lib/supabase"; 
 
 export default function KurirHome() {
@@ -24,16 +24,15 @@ export default function KurirHome() {
     return () => clearInterval(interval); 
   }, []);
 
-  // Tarik Data Kurir & Statistik Pesanan
+  // Tarik Data Kurir & Statistik Pesanan + RADAR REALTIME
   useEffect(() => {
+    const savedCourierId = sessionStorage.getItem("loggedInCourierId") || "a2c08fd2-ccc2-4271-8a7b-b74870c9dd60";
+
     const fetchDashboardData = async () => {
       try {
         setLoadingName(true);
         
-        // 1. Ambil ID kurir yang sedang login
-        const savedCourierId = sessionStorage.getItem("loggedInCourierId") || "a2c08fd2-ccc2-4271-8a7b-b74870c9dd60";
-
-        // 2. Tarik Nama Kurir
+        // 1. Tarik Nama Kurir
         const { data: courierData } = await supabase
           .from("couriers")
           .select("username")
@@ -44,7 +43,7 @@ export default function KurirHome() {
           setCourierName(courierData.username);
         }
 
-        // 3. Tarik Semua Pesanan (Shipments) Milik Kurir Ini
+        // 2. Tarik Semua Pesanan (Shipments) Milik Kurir Ini
         const { data: shipmentsData, error } = await supabase
           .from("shipments")
           .select("*")
@@ -52,7 +51,7 @@ export default function KurirHome() {
 
         if (error) throw error;
 
-        // 4. Kalkulasi Statistik Selama Menjadi Kurir (All-Time)
+        // 3. Kalkulasi Statistik dengan Logika yang Diperbaiki
         if (shipmentsData) {
           let pendapatan = 0;
           let menunggu = 0;
@@ -60,14 +59,15 @@ export default function KurirHome() {
           let selesai = 0;
 
           shipmentsData.forEach((task: any) => {
-            const status = task.status?.toLowerCase() || "";
+            const status = task.status?.toLowerCase().trim() || "";
             
             if (status === "menunggu kurir") {
               menunggu++;
             } else if (status === "selesai") {
               selesai++;
-              pendapatan += (task.shipping_cost || 0); // Akumulasi pendapatan semua paket selesai
-            } else if (status !== "dibatalkan") {
+              pendapatan += (task.shipping_cost || 0); // Akumulasi uang hanya dari yang selesai
+            } else if (status !== "dibatalkan" && status !== "ditolak") {
+              // Yang dihitung proses HANYA: Menuju Lokasi, Sudah Diambil, dan Dalam Perjalanan
               proses++;
             }
           });
@@ -85,7 +85,24 @@ export default function KurirHome() {
       }
     };
 
+    // Panggil data pertama kali saat halaman dibuka
     fetchDashboardData();
+
+    // 4. PASANG RADAR REALTIME: Dengarkan perubahan di database
+    const channel = supabase
+      .channel('kurir-dashboard-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'shipments' },
+        () => {
+          // Jika ada perubahan (paket selesai, diambil, dll), hitung ulang otomatis!
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    // Bersihkan radar kalau pindah halaman
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const formattedDate = time
@@ -164,7 +181,6 @@ export default function KurirHome() {
             <CheckCircle2 size={18} />
             <span>Total Pickup</span>
           </div>
-          {/* Angka Total Pickup akan sama dengan total paket yang sudah "Selesai" */}
           <span className="text-3xl font-bold text-green-600">{selesaiCount}</span>
         </div>
       </div>

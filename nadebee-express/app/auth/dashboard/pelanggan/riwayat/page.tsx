@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { Trash2 } from "lucide-react"; // Tambahan Ikon Tong Sampah
 
 export default function RiwayatPickupPage() {
   const router = useRouter();
@@ -18,6 +19,12 @@ export default function RiwayatPickupPage() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
+
+  // --- STATE UNTUK FITUR DELETE ---
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+  const [resiToDelete, setResiToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // --- LOGIKA KALENDER DINAMIS ---
   const today = new Date();
@@ -56,45 +63,45 @@ export default function RiwayatPickupPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    const fetchRiwayat = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
+  const fetchRiwayat = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user && user.email) {
+        const { data, error } = await supabase
+          .from("shipments")
+          .select("*")
+          .eq("customer_email", user.email)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
         
-        if (user && user.email) {
-          const { data, error } = await supabase
-            .from("shipments")
-            .select("*")
-            .eq("customer_email", user.email)
-            .order("created_at", { ascending: false });
-
-          if (error) throw error;
-          
-          if (data) {
-            const formattedData = data.map((d) => ({
-              id: d.resi_number,
-              status: d.status,
-              rute: `${d.sender_name} → ${d.receiver_name}`,
-              detail: `${d.destination_city} | ${d.item_category} | ${d.weight_range}`,
-              tanggal: d.created_at.split("T")[0] // Ambil YYYY-MM-DD
-            }));
-            setDataRiwayatAwal(formattedData);
-          }
+        if (data) {
+          const formattedData = data.map((d) => ({
+            id: d.resi_number,
+            status: d.status,
+            rute: `${d.sender_name} → ${d.receiver_name}`,
+            detail: `${d.destination_city} | ${d.item_category} | ${d.weight_range}`,
+            tanggal: d.created_at.split("T")[0] // Ambil YYYY-MM-DD
+          }));
+          setDataRiwayatAwal(formattedData);
         }
-      } catch (error) {
-        console.error("Gagal menarik data riwayat:", error);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error("Gagal menarik data riwayat:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchRiwayat();
 
     const channel = supabase
       .channel('live-update-riwayat')
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'shipments' },
+        { event: '*', schema: 'public', table: 'shipments' }, // Ubah ke '*' agar deteksi DELETE juga
         () => { fetchRiwayat(); }
       )
       .subscribe();
@@ -102,13 +109,56 @@ export default function RiwayatPickupPage() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const countAktif = dataRiwayatAwal.filter(i => (i.status || "").toLowerCase().trim() !== "selesai").length;
-  const countSelesai = dataRiwayatAwal.filter(i => (i.status || "").toLowerCase().trim() === "selesai").length;
+  // ==========================================
+  // FUNGSI HARD DELETE (MEMENUHI SYARAT CRUD)
+  // ==========================================
+  const executeDelete = async () => {
+    if (!resiToDelete) return;
+    setIsDeleting(true);
+
+    try {
+      // 1. Eksekusi Hapus Permanen di Supabase
+      const { error } = await supabase
+        .from('shipments')
+        .delete()
+        .eq('resi_number', resiToDelete);
+
+      if (error) throw error;
+
+      // 2. Hapus langsung dari state lokal agar UI instan merespon
+      setDataRiwayatAwal(prev => prev.filter(item => item.id !== resiToDelete));
+      
+      // 3. Tampilkan Pop-up Sukses
+      setShowDeleteConfirm(false);
+      setShowDeleteSuccess(true);
+      setResiToDelete(null);
+
+    } catch (error: any) {
+      console.error("Gagal membatalkan pesanan:", error);
+      alert(`Gagal! Pastikan gembok (RLS) untuk DELETE di Supabase sudah dimatikan. Error: ${error.message}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // --- LOGIKA FILTER YANG DIPERBAIKI (KEBAL TYPO & PISAHKAN STATUS) ---
+  const countAktif = dataRiwayatAwal.filter(i => {
+    const s = (i.status || "").toLowerCase().trim();
+    // Yang aktif HANYA yang belum selesai, belum ditolak, dan belum dibatalkan
+    return s !== "selesai" && s !== "ditolak" && s !== "dibatalkan";
+  }).length;
+
+  const countSelesai = dataRiwayatAwal.filter(i => {
+    const s = (i.status || "").toLowerCase().trim();
+    // Masukkan yang sukses (selesai) dan yang gagal (ditolak/dibatalkan) ke tab Selesai
+    return s === "selesai" || s === "ditolak" || s === "dibatalkan";
+  }).length;
 
   const dataTerfilter = dataRiwayatAwal.filter((item) => {
     const dbStatus = (item.status || "").toLowerCase().trim();
-    const isSelesai = dbStatus === "selesai";
-    const matchTab = activeTab === "Aktif" ? !isSelesai : isSelesai;
+    
+    const isHistory = dbStatus === "selesai" || dbStatus === "ditolak" || dbStatus === "dibatalkan";
+    const matchTab = activeTab === "Aktif" ? !isHistory : isHistory;
     
     const matchQuery = dbStatus.includes(searchQuery.toLowerCase().trim()) || 
                        item.id.toLowerCase().includes(searchQuery.toLowerCase().trim());
@@ -134,6 +184,54 @@ export default function RiwayatPickupPage() {
 
   return (
     <main className="min-h-screen bg-[#F4F9F4] font-sans pb-20">
+      
+      {/* --- POP-UP KONFIRMASI DELETE --- */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)}></div>
+          <div className="bg-white rounded-[32px] p-8 md:p-10 max-w-sm w-full text-center relative z-10 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={32} />
+            </div>
+            <h2 className="text-xl font-black text-gray-900 mb-2">Batalkan Pesanan?</h2>
+            <p className="text-sm text-gray-500 mb-6">Yakin ingin membatalkan pesanan <span className="font-bold text-gray-800">{resiToDelete}</span>? Data pesanan ini akan dihapus permanen dari sistem.</p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowDeleteConfirm(false)} 
+                disabled={isDeleting}
+                className="flex-1 bg-white border border-gray-300 text-gray-600 font-bold py-3 rounded-xl hover:bg-gray-50"
+              >
+                Kembali
+              </button>
+              <button 
+                onClick={executeDelete} 
+                disabled={isDeleting}
+                className="flex-1 bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600 flex justify-center items-center"
+              >
+                {isDeleting ? <span className="animate-pulse">Menghapus...</span> : "Ya, Batalkan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- POP-UP SUKSES DELETE --- */}
+      {showDeleteSuccess && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm"></div>
+          <div className="bg-white rounded-[32px] p-8 md:p-10 max-w-sm w-full text-center relative z-10 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <h2 className="text-xl font-black text-gray-900 mb-2">Berhasil Dibatalkan</h2>
+            <p className="text-sm text-gray-500 mb-6">Pesanan pickup kamu telah berhasil dibatalkan dan dihapus dari sistem.</p>
+            <button 
+              onClick={() => setShowDeleteSuccess(false)} 
+              className="w-full bg-[#4CAF50] text-white font-bold py-4 rounded-xl hover:bg-green-600 transition-colors shadow-lg shadow-green-100"
+            >
+              Mengerti
+            </button>
+          </div>
+        </div>
+      )}
+
       <section className="max-w-[1200px] mx-auto pt-12 px-6">
         
         <div className="mb-10">
@@ -198,7 +296,6 @@ export default function RiwayatPickupPage() {
 
                 {/* Hari Dinamis */}
                 <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium">
-                  {/* Kosongkan padding sesuai hari pertama di bulan itu (opsional, untuk sederhana kita langsung render hari) */}
                   {daysInMonth.map((day) => {
                     const monthStr = String(currentMonth + 1).padStart(2, "0");
                     const dayStr = String(day).padStart(2, "0");
@@ -256,105 +353,130 @@ export default function RiwayatPickupPage() {
           </button>
         </div>
 
-        <div className="space-y-4 mb-12">
-          {loading ? (
-            <div className="text-center py-12 text-gray-400 font-bold animate-pulse">Memuat data riwayat...</div>
-          ) : dataPerHalaman.length > 0 ? (
-            dataPerHalaman.map((item) => (
-              <div 
-                key={item.id}
-                className="bg-white border border-black rounded-[30px] p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between hover:shadow-md transition-shadow cursor-pointer gap-6 md:gap-0"
-                onClick={() => router.push(`/auth/dashboard/pelanggan/riwayat/detail-pengiriman?resi=${item.id}`)}
-              >
-                <div className="flex items-center gap-6">
-                  <div className="flex flex-col justify-center">
-                    <span className="font-bold text-lg mb-2">{item.id}</span>
-                    <div className="bg-[#E8F5E9]/60 w-14 h-14 flex items-center justify-center rounded-xl border border-green-200 shadow-sm shrink-0">
-                      <span className="text-2xl">📦</span>
+        <div className="flex flex-col justify-between min-h-[480px]">
+          <div className="space-y-4">
+            {loading ? (
+              <div className="text-center py-12 text-gray-400 font-bold animate-pulse">Memuat data riwayat...</div>
+            ) : dataPerHalaman.length > 0 ? (
+              dataPerHalaman.map((item) => {
+                const isMenungguKurir = (item.status || "").toLowerCase().trim() === "menunggu kurir";
+
+                return (
+                  <div 
+                    key={item.id}
+                    className="bg-white border border-black rounded-[30px] p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between hover:shadow-md transition-shadow cursor-pointer gap-6 md:gap-0"
+                    onClick={() => router.push(`/auth/dashboard/pelanggan/riwayat/detail-pengiriman?resi=${item.id}`)}
+                  >
+                    <div className="flex items-center gap-6">
+                      <div className="flex flex-col justify-center">
+                        <span className="font-bold text-lg mb-2">{item.id}</span>
+                        <div className="bg-[#E8F5E9]/60 w-14 h-14 flex items-center justify-center rounded-xl border border-green-200 shadow-sm shrink-0">
+                          <span className="text-2xl">📦</span>
+                        </div>
+                      </div>
+
+                      <div className="pt-6 text-[15px]">
+                        <p className="text-gray-400">{item.rute}</p>
+                        <p className="text-gray-500 mt-1">{item.detail}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between md:justify-end md:gap-6 w-full md:w-auto mt-4 md:mt-0">
+                      
+                      <span className={`px-8 py-2 rounded-full text-xs font-bold border text-center whitespace-nowrap ${
+                        (item.status || "").toLowerCase().trim() === "selesai" 
+                          ? "bg-[#E8F5E9] border-green-200 text-green-600" 
+                          : (item.status || "").toLowerCase().trim() === "dalam perjalanan"
+                          ? "bg-purple-50 border-purple-200 text-purple-600"
+                          : (item.status || "").toLowerCase().trim() === "paket sudah diambil"
+                          ? "bg-blue-50 border-blue-200 text-blue-600"
+                          : "bg-orange-50 border-orange-200 text-orange-600"
+                      }`}>
+                        {item.status}
+                      </span>
+                      
+                      {/* --- TOMBOL BATALKAN (HANYA MUNCUL SAAT "MENUNGGU KURIR") --- */}
+                      {isMenungguKurir && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // Mencegah user terlempar ke halaman detail saat klik tombol batal
+                            setResiToDelete(item.id);
+                            setShowDeleteConfirm(true);
+                          }}
+                          className="w-10 h-10 flex items-center justify-center bg-white border border-red-200 text-red-500 rounded-full hover:bg-red-50 hover:text-red-600 hover:scale-105 transition-all shadow-sm shrink-0"
+                          title="Batalkan Pesanan"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
+                      
+                      <button
+                        type="button"
+                        className="text-green-600 font-bold text-xl cursor-pointer hover:scale-110 transition-transform p-2 hidden md:block shrink-0"
+                      >
+                        ➔
+                      </button>
+
                     </div>
                   </div>
-
-                  <div className="pt-6 text-[15px]">
-                    <p className="text-gray-400">{item.rute}</p>
-                    <p className="text-gray-500 mt-1">{item.detail}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between md:justify-end md:gap-12 w-full md:w-auto">
-                  <span className={`px-8 py-2 rounded-full text-xs font-bold border text-center ${
-                    (item.status || "").toLowerCase().trim() === "selesai" 
-                      ? "bg-[#E8F5E9] border-green-200 text-green-600" 
-                      : (item.status || "").toLowerCase().trim() === "dalam perjalanan"
-                      ? "bg-blue-50 border-blue-200 text-blue-600"
-                      : "bg-orange-50 border-orange-200 text-orange-600"
-                  }`}>
-                    {item.status}
-                  </span>
-                  
-                  <button
-                    type="button"
-                    className="text-green-600 font-bold text-xl cursor-pointer hover:scale-110 transition-transform p-2 hidden md:block"
-                  >
-                    ➔
-                  </button>
-                </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-12 text-gray-400 bg-white border border-dashed border-gray-300 rounded-[30px]">
+                Tidak ada data riwayat dengan filter ini.
               </div>
-            ))
-          ) : (
-            <div className="text-center py-12 text-gray-400 bg-white border border-dashed border-gray-300 rounded-[30px]">
-              Tidak ada data riwayat dengan filter ini.
+            )}
+          </div>
+
+          {!loading && dataTerfilter.length > 0 && (
+            <div className="flex items-center justify-center gap-1 mt-8">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className={`w-10 h-10 border rounded-l-xl flex items-center justify-center font-bold text-sm transition-all border-gray-200 ${
+                  currentPage === 1
+                    ? "bg-white text-gray-300 cursor-not-allowed"
+                    : "bg-white text-gray-600 hover:bg-gray-50 active:scale-95"
+                }`}
+              >
+                ←
+              </button>
+
+              {renderPaginationButtons().map((page) => {
+                const isSelected = currentPage === page;
+
+                return (
+                  <button
+                    key={`page-${page}`}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-10 h-10 font-bold text-sm transition-all border-y border-x border-gray-200 flex items-center justify-center ${
+                      isSelected
+                        ? "bg-green-600 text-white border-green-600" 
+                        : "bg-white text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className={`w-10 h-10 border rounded-r-xl flex items-center justify-center font-bold text-sm transition-all border-gray-200 ${
+                  currentPage === totalPages
+                    ? "bg-white text-gray-300 cursor-not-allowed"
+                    : "bg-white text-gray-600 hover:bg-gray-50 active:scale-95"
+                }`}
+              >
+                →
+              </button>
             </div>
           )}
         </div>
-
-        {!loading && dataTerfilter.length > 0 && (
-          <div className="flex items-center justify-center gap-1 mt-8">
-            <button
-              type="button"
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className={`w-10 h-10 border rounded-l-xl flex items-center justify-center font-bold text-sm transition-all border-gray-200 ${
-                currentPage === 1
-                  ? "bg-white text-gray-300 cursor-not-allowed"
-                  : "bg-white text-gray-600 hover:bg-gray-50 active:scale-95"
-              }`}
-            >
-              ←
-            </button>
-
-            {renderPaginationButtons().map((page) => {
-              const isSelected = currentPage === page;
-
-              return (
-                <button
-                  key={`page-${page}`}
-                  type="button"
-                  onClick={() => setCurrentPage(page)}
-                  className={`w-10 h-10 font-bold text-sm transition-all border-y border-x border-gray-200 flex items-center justify-center ${
-                    isSelected
-                      ? "bg-green-600 text-white border-green-600" 
-                      : "bg-white text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  {page}
-                </button>
-              );
-            })}
-
-            <button
-              type="button"
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className={`w-10 h-10 border rounded-r-xl flex items-center justify-center font-bold text-sm transition-all border-gray-200 ${
-                currentPage === totalPages
-                  ? "bg-white text-gray-300 cursor-not-allowed"
-                  : "bg-white text-gray-600 hover:bg-gray-50 active:scale-95"
-              }`}
-            >
-              →
-            </button>
-          </div>
-        )}
 
       </section>
     </main>

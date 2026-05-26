@@ -62,6 +62,15 @@ export default function PilihKurir() {
           <p className="text-gray-500 text-sm">Pilih kurir yang tersedia di dekatmu</p>
         </div>
 
+        <div className="w-full flex justify-start mb-6">
+          <button 
+            onClick={() => router.back()}
+            className="text-gray-400 hover:text-gray-600 transition-all font-medium italic text-sm flex items-center gap-2 cursor-pointer"
+          >
+            ← Kembali
+          </button>
+        </div>
+        
         <div className="space-y-4 mb-4">
           {/* Tampilkan loading state jika data masih ditarik */}
           {loading ? (
@@ -89,7 +98,7 @@ export default function PilihKurir() {
                   <div>
                     {/* Menggunakan kurir.username sesuai nama kolom di database */}
                     <h3 className="text-lg font-bold text-[#1A1A1A]">{kurir.username}</h3>
-                    <p className="text-gray-500 text-sm font-semibold">{kurir.vehicle}</p>
+                    <p className="text-gray-500 text-sm font-semibold">{kurir.phone}</p>
                   </div>
                 </div>
 

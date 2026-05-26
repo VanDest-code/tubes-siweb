@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, Clock, Star, Package, Truck, User } from "lucide-react"; 
+import { Check, Clock, Star, Package, Truck, User, Phone } from "lucide-react"; 
 import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ function DetailPengirimanContent() {
   const [detailData, setDetailData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // State untuk Manajemen Rating & Ulasan
+  // State untuk Manajemen Rating & Ulasan Interaktif
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [ulasan, setUlasan] = useState("");
@@ -42,7 +42,6 @@ function DetailPengirimanContent() {
             *,
             couriers (
               username,
-              vehicle,
               phone
             )
           `)
@@ -69,26 +68,34 @@ function DetailPengirimanContent() {
 
     try {
       setIsSubmitting(true);
-      const { error } = await supabase
+      
+      // Menggunakan .select() untuk memastikan data benar-benar berhasil diupdate (kebal RLS)
+      const { data, error } = await supabase
         .from("shipments")
         .update({
           rating: rating,
           review: ulasan
         })
-        .eq("resi_number", resiQuery);
+        .eq("resi_number", resiQuery)
+        .select(); 
 
       if (error) throw error;
 
-      // Sinkronkan state lokal agar UI langsung terkunci tanpa refresh manual
+      // Jika data kosong, update diblokir oleh Supabase
+      if (!data || data.length === 0) {
+        throw new Error("Update diblokir oleh keamanan database (RLS)!");
+      }
+
+      // Sinkronkan state lokal agar langsung mengunci ke mode Read-Only secara instan
       setDetailData((prev: any) => ({
         ...prev,
         rating: rating,
         review: ulasan
       }));
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Gagal mengirim penilaian:", error);
-      alert("Gagal mengirim penilaian, silakan coba lagi.");
+      alert(`Gagal mengirim! Pastikan RLS di tabel shipments Supabase sudah dimatikan (Disable). Error: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -150,9 +157,6 @@ function DetailPengirimanContent() {
 
   const proofImageUrl = detailData.bukti_foto_url || "https://images.unsplash.com/photo-1580674285054-bed31e145f59?q=80&w=2070&auto=format&fit=crop";
 
-  // Cek apakah data rating sudah tersimpan di database
-  const hasBeenRated = detailData.rating && detailData.rating > 0;
-
   return (
     <main className="w-full flex flex-col items-center pt-10 pb-20 px-6 max-w-[1200px] mx-auto animate-in fade-in duration-500">
       
@@ -180,10 +184,10 @@ function DetailPengirimanContent() {
                 <p className="text-[#4CAF50] font-black text-[22px] tracking-tight">{detailData.resi_number}</p>
               </div>
 
-              {/* Box Info Kurir */}
+              {/* Box Info Kurir (BEBAS KENDARAAN) */}
               <div className="bg-white border border-gray-200 rounded-[20px] p-5 flex-1 shadow-sm flex flex-col justify-center">
-                <p className="text-gray-400 text-[11px] font-bold mb-3 flex items-center gap-2 uppercase tracking-widest">
-                  <Truck size={14} className="text-[#4CAF50]" /> Info Kurir
+                <p className="text-gray-400 text-[11px] font-bold mb-3 uppercase tracking-widest">
+                  Info Kurir
                 </p>
                 
                 {detailData.couriers ? (
@@ -195,8 +199,8 @@ function DetailPengirimanContent() {
                       <p className="font-black text-[15px] text-black leading-tight">
                         {detailData.couriers.username}
                       </p>
-                      <p className="text-[11px] font-medium text-gray-500 mt-1">
-                        {detailData.couriers.vehicle}
+                      <p className="text-[12px] font-bold text-[#4CAF50] mt-1 flex items-center gap-1">
+                        📞 {detailData.couriers.phone || "-"}
                       </p>
                     </div>
                   </div>
@@ -308,56 +312,53 @@ function DetailPengirimanContent() {
       {/* --- AREA FORM PENILAIAN / RATING --- */}
       {isSelesai && (
         <div className="w-full bg-white border border-black rounded-[40px] p-12 shadow-sm text-center mb-8">
-          <h3 className="font-black text-black mb-6">
-            {hasBeenRated ? "Penilaian Kamu Berhasil Dikirim" : "Paket sudah sampai! Yuk beri penilaian.."}
-          </h3>
           
-          {/* Looping Bintang Dinamis (Bisa mengunci otomatis) */}
-          <div className="flex justify-center gap-3 mb-8">
-            {[1, 2, 3, 4, 5].map((star) => {
-              // Gunakan rating database jika sudah ada, jika tidak gunakan rating interaktif local
-              const finalActiveStar = hasBeenRated ? detailData.rating : (hoveredRating || rating);
-              const isActive = star <= finalActiveStar;
-
-              if (hasBeenRated) {
-                // RENDER BINTANG MATI (Tidak bisa di-hover / diklik)
-                return (
-                  <div key={star} className="transition-all">
-                    <Star 
-                      size={40} 
-                      className={isActive ? "fill-[#4CAF50] text-[#4CAF50]" : "text-gray-300"} 
-                    />
-                  </div>
-                );
-              }
-
-              // RENDER BINTANG AKTIF (Bisa di-hover / diklik untuk input pertama kali)
-              return (
-                <button
-                  key={star}
-                  type="button"
-                  onMouseEnter={() => setHoveredRating(star)}
-                  onMouseLeave={() => setHoveredRating(0)}
-                  onClick={() => setRating(star)}
-                  className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
-                >
+          {/* Validasi ketat membaca state detailData yang diperbarui secara langsung */}
+          {detailData?.rating && detailData.rating > 0 ? (
+            <div className="animate-in fade-in zoom-in duration-500">
+              <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check size={32} strokeWidth={3} />
+              </div>
+              <h3 className="font-black text-black mb-4">Terima Kasih atas Penilaianmu!</h3>
+              <div className="flex justify-center gap-2 mb-4">
+                {[1, 2, 3, 4, 5].map((star) => (
                   <Star 
-                    size={40} 
-                    className={`${isActive ? "fill-[#4CAF50] text-[#4CAF50]" : "text-gray-300"} transition-colors`} 
+                    key={star} 
+                    size={32} 
+                    className={star <= detailData.rating ? "fill-[#4CAF50] text-[#4CAF50]" : "text-gray-200"} 
                   />
-                </button>
-              );
-            })}
-          </div>
-
-          {hasBeenRated ? (
-            /* TAMPILAN TEXT REVIEW LOCK */
-            <div className="w-full bg-[#F4F9F4] border border-green-200 rounded-[20px] p-6 text-sm font-semibold italic text-gray-600 max-w-[600px] mx-auto">
-              "{detailData.review || "Tidak ada ulasan tertulis"}"
+                ))}
+              </div>
+              <p className="text-gray-500 italic text-sm">
+                "{detailData.review || "Tidak ada ulasan tertulis"}"
+              </p>
             </div>
           ) : (
-            /* TAMPILAN INPUT FORM AKTIF */
-            <>
+            <div className="animate-in fade-in duration-500">
+              <h3 className="font-black text-black mb-6">Paket sudah sampai! Yuk beri penilaian..</h3>
+              
+              <div className="flex justify-center gap-3 mb-8">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onMouseEnter={() => setHoveredRating(star)}
+                    onMouseLeave={() => setHoveredRating(0)}
+                    onClick={() => setRating(star)}
+                    className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
+                  >
+                    <Star 
+                      size={40} 
+                      className={`${
+                        star <= (hoveredRating || rating) 
+                          ? "fill-[#4CAF50] text-[#4CAF50]" 
+                          : "text-gray-300"
+                      } transition-colors`} 
+                    />
+                  </button>
+                ))}
+              </div>
+
               <textarea
                 placeholder="Tulis ulasan (opsional)..."
                 value={ulasan}
@@ -376,8 +377,9 @@ function DetailPengirimanContent() {
               >
                 {isSubmitting ? "Mengirim Penilaian..." : "Kirim Penilaian"}
               </button>
-            </>
+            </div>
           )}
+
         </div>
       )}
 
