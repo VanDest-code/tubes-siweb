@@ -15,7 +15,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // State Data & Edit Mode
   const [formData, setFormData] = useState({
     username: "",
     phone: "",
@@ -23,11 +22,9 @@ export default function ProfilePage() {
   });
   const [isEditMode, setIsEditMode] = useState(false);
 
-  // State Password & Error Objek
   const [passwords, setPasswords] = useState({ old: "", new: "", confirm: "" });
   const [errors, setErrors] = useState({ old: "", new: "", confirm: "" });
 
-  // 1. Ambil Data Pengguna Terautentikasi
   useEffect(() => {
     async function getProfile() {
       try {
@@ -40,10 +37,10 @@ export default function ProfilePage() {
 
         const userEmail = session.user.email ? session.user.email.toLowerCase().trim() : "";
 
-        // REVISI: Ambil data profil berdasarkan email menggunakan kolom yang benar (username dan phone)
+        // KEMBALI KE KOLOM ASLI: full_name dan phone_number
         const { data, error: profileError } = await supabase
           .from("profiles")
-          .select("username, phone, email") 
+          .select("full_name, phone_number, email") 
           .eq("email", userEmail)
           .single();
 
@@ -58,10 +55,9 @@ export default function ProfilePage() {
         }
 
         if (data) {
-          // REVISI: Mapping ke state menggunakan kolom yang benar
           setFormData({
-            username: data.username || "",
-            phone: data.phone || "",
+            username: data.full_name || "",
+            phone: data.phone_number || "",
             email: data.email || ""
           });
         }
@@ -74,18 +70,16 @@ export default function ProfilePage() {
     getProfile();
   }, [router]);
 
-  // 2. Fungsi Update Data Profil
   const handleUpdateProfile = async () => {
     try {
       setIsSaving(true);
       const targetEmail = formData.email.toLowerCase().trim();
       
-      // REVISI: Update ke database menggunakan kolom yang benar
       const { data, error } = await supabase
         .from("profiles")
         .update({
-          username: formData.username,
-          phone: formData.phone,
+          full_name: formData.username, // KEMBALI KE KOLOM ASLI
+          phone_number: formData.phone, // KEMBALI KE KOLOM ASLI
           user_type: "pelanggan"
         })
         .eq("email", targetEmail)
@@ -108,7 +102,6 @@ export default function ProfilePage() {
     }
   };
 
-  // 3. Fungsi Update Password
   const handleUpdatePassword = async () => {
     let tempErrors = { old: "", new: "", confirm: "" };
     let isValid = true;
@@ -141,12 +134,8 @@ export default function ProfilePage() {
 
     if (isValid) {
       try {
-        const { error } = await supabase.auth.updateUser({
-          password: passwords.new
-        });
-
+        const { error } = await supabase.auth.updateUser({ password: passwords.new });
         if (error) throw error;
-
         setSuccessMessage("Password Berhasil Disimpan");
         setShowSuccessModal(true);
         setPasswords({ old: "", new: "", confirm: "" });
@@ -158,7 +147,6 @@ export default function ProfilePage() {
     }
   };
 
-  // 4. Fungsi Logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/auth/login/pelanggan");
@@ -175,15 +163,12 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen bg-[#F4F9F4] pb-20">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
       <section className="flex flex-col items-center pt-12 px-6 max-w-xl mx-auto">
-        
         <div className="text-center mb-10">
           <h1 className="text-2xl font-black text-gray-900">Profil Saya</h1>
           <p className="text-sm text-gray-500 font-medium mt-1">Kelola informasi akunmu</p>
         </div>
 
-        {/* AVATAR & NAMA */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-20 h-20 border-2 border-[#4CAF50] rounded-full flex items-center justify-center bg-white mb-4 shadow-sm">
             <User className="text-[#4CAF50]" size={32} />
@@ -192,9 +177,7 @@ export default function ProfilePage() {
           <p className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-wider">Akun Terverifikasi</p>
         </div>
 
-        {/* KARTU FORM PROFIL */}
         <div className="w-full bg-white border border-gray-200 rounded-[32px] p-8 shadow-sm mb-6 relative">
-          
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-lg font-black text-gray-900">Informasi Pribadi</h3>
             <button 
@@ -207,7 +190,6 @@ export default function ProfilePage() {
           </div>
 
           <div className="space-y-6">
-            
             <div>
               <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
                 <User size={16} className="text-gray-400"/> Username
@@ -219,7 +201,6 @@ export default function ProfilePage() {
                 className={`w-full p-4 rounded-xl text-sm font-medium border transition-colors ${isEditMode ? "bg-white border-[#4CAF50] focus:ring-2 focus:ring-green-100 outline-none text-black" : "bg-gray-50/50 border-gray-100 text-gray-500"}`}
               />
             </div>
-
             <div>
               <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
                 <Phone size={16} className="text-gray-400"/> Nomor Telepon
@@ -231,7 +212,6 @@ export default function ProfilePage() {
                 className={`w-full p-4 rounded-xl text-sm font-medium border transition-colors ${isEditMode ? "bg-white border-[#4CAF50] focus:ring-2 focus:ring-green-100 outline-none text-black" : "bg-gray-50/50 border-gray-100 text-gray-500"}`}
               />
             </div>
-
             <div>
               <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
                 <Mail size={16} className="text-gray-400"/> Email
@@ -242,12 +222,11 @@ export default function ProfilePage() {
                 className="w-full p-4 rounded-xl text-sm font-medium border bg-green-50/30 border-green-100 text-gray-400 cursor-not-allowed" 
               />
             </div>
-
             {isEditMode && (
               <button 
                 onClick={handleUpdateProfile} 
                 disabled={isSaving}
-                className="w-full bg-[#4CAF50] text-white font-bold py-4 rounded-xl mt-4 hover:bg-green-600 transition-colors shadow-lg shadow-green-100 animate-in fade-in"
+                className="w-full bg-[#4CAF50] text-white font-bold py-4 rounded-xl mt-4 hover:bg-green-600 transition-colors shadow-lg shadow-green-100"
               >
                 {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
               </button>
@@ -255,93 +234,65 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* UBAH PASSWORD TOGGLE */}
         {!showPasswordForm && (
           <p className="mb-8 text-sm font-medium text-gray-500">
             Ubah Password? <button onClick={() => setShowPasswordForm(true)} className="font-black text-gray-900 hover:underline">Klik disini</button>
           </p>
         )}
 
-        {/* FORM PASSWORD */}
         {showPasswordForm && (
-          <div className="w-full bg-white border border-gray-200 rounded-[32px] p-8 shadow-sm mb-8 animate-in slide-in-from-top-4 fade-in duration-200">
+          <div className="w-full bg-white border border-gray-200 rounded-[32px] p-8 shadow-sm mb-8">
             <h3 className="flex items-center gap-2 font-black text-lg text-gray-900 mb-6"><Key size={20} className="text-[#4CAF50]" /> Ubah Password</h3>
             <div className="space-y-5">
               <div>
                 <label className="text-sm font-bold text-gray-700 mb-2 block">Password Lama</label>
                 <input 
-                  type="password"
-                  placeholder="Masukkan password lama"
-                  className={`w-full p-4 rounded-xl text-sm font-medium border outline-none focus:ring-2 ${errors.old ? 'border-red-300 focus:ring-red-100' : 'border-gray-200 focus:border-[#4CAF50] focus:ring-green-100'}`}
-                  value={passwords.old}
-                  onChange={(e) => {setPasswords({...passwords, old: e.target.value}); setErrors({...errors, old: ""});}}
+                  type="password" placeholder="Masukkan password lama"
+                  className={`w-full p-4 rounded-xl text-sm font-medium border outline-none ${errors.old ? 'border-red-300' : 'border-gray-200 focus:border-[#4CAF50]'}`}
+                  value={passwords.old} onChange={(e) => {setPasswords({...passwords, old: e.target.value}); setErrors({...errors, old: ""});}}
                 />
                 {errors.old && <p className="text-red-500 text-[11px] font-bold mt-1.5">{errors.old}</p>}
               </div>
-
               <div>
                 <label className="text-sm font-bold text-gray-700 mb-2 block">Password Baru</label>
                 <input 
-                  type="password"
-                  placeholder="Min. 8 karakter"
-                  className={`w-full p-4 rounded-xl text-sm font-medium border outline-none focus:ring-2 ${errors.new ? 'border-red-300 focus:ring-red-100' : 'border-gray-200 focus:border-[#4CAF50] focus:ring-green-100'}`}
-                  value={passwords.new}
-                  onChange={(e) => {setPasswords({...passwords, new: e.target.value}); setErrors({...errors, new: ""});}}
+                  type="password" placeholder="Min. 8 karakter"
+                  className={`w-full p-4 rounded-xl text-sm font-medium border outline-none ${errors.new ? 'border-red-300' : 'border-gray-200 focus:border-[#4CAF50]'}`}
+                  value={passwords.new} onChange={(e) => {setPasswords({...passwords, new: e.target.value}); setErrors({...errors, new: ""});}}
                 />
                 {errors.new && <p className="text-red-500 text-[11px] font-bold mt-1.5">{errors.new}</p>}
               </div>
-
               <div>
                 <label className="text-sm font-bold text-gray-700 mb-2 block">Konfirmasi Password Baru</label>
                 <input 
-                  type="password"
-                  placeholder="Ulangi password baru"
-                  className={`w-full p-4 rounded-xl text-sm font-medium border outline-none focus:ring-2 ${errors.confirm ? 'border-red-300 focus:ring-red-100' : 'border-gray-200 focus:border-[#4CAF50] focus:ring-green-100'}`}
-                  value={passwords.confirm}
-                  onChange={(e) => {setPasswords({...passwords, confirm: e.target.value}); setErrors({...errors, confirm: ""});}}
+                  type="password" placeholder="Ulangi password baru"
+                  className={`w-full p-4 rounded-xl text-sm font-medium border outline-none ${errors.confirm ? 'border-red-300' : 'border-gray-200 focus:border-[#4CAF50]'}`}
+                  value={passwords.confirm} onChange={(e) => {setPasswords({...passwords, confirm: e.target.value}); setErrors({...errors, confirm: ""});}}
                 />
                 {errors.confirm && <p className="text-red-500 text-[11px] font-bold mt-1.5">{errors.confirm}</p>}
               </div>
-
               <div className="flex gap-3 pt-2">
-                <button 
-                  onClick={() => setShowPasswordForm(false)}
-                  className="flex-1 bg-white border border-gray-200 text-gray-600 font-bold py-4 rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  Batal
-                </button>
-                <button 
-                  onClick={handleUpdatePassword}
-                  className="flex-1 bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-gray-800 transition-colors"
-                >
-                  Simpan 
-                </button>
+                <button onClick={() => setShowPasswordForm(false)} className="flex-1 bg-white border border-gray-200 text-gray-600 font-bold py-4 rounded-xl hover:bg-gray-50">Batal</button>
+                <button onClick={handleUpdatePassword} className="flex-1 bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-gray-800">Simpan</button>
               </div>
             </div>
           </div>
         )}
 
-        <button 
-          onClick={handleLogout}
-          className="w-full bg-white border border-red-200 text-red-500 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-50 transition-colors shadow-sm"
-        >
+        <button onClick={handleLogout} className="w-full bg-white border border-red-200 text-red-500 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-50">
           <LogOut size={18} /> Logout
         </button>
       </section>
 
-      {/* MODAL SUKSES (Dipertahankan dan dipercantik) */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-6">
           <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => { setShowSuccessModal(false); if(successMessage.includes("Password")) setShowPasswordForm(false); }}></div>
-          <div className="bg-white border border-gray-100 rounded-[32px] w-full max-w-sm p-10 relative z-10 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+          <div className="bg-white border border-gray-100 rounded-[32px] w-full max-w-sm p-10 relative z-10 shadow-2xl flex flex-col items-center text-center">
             <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
               <CheckCircle2 size={40} className="text-[#4CAF50]" />
             </div>
             <h3 className="text-xl font-black text-gray-900 mb-8">{successMessage}</h3>
-            <button 
-              onClick={() => { setShowSuccessModal(false); if(successMessage.includes("Password")) setShowPasswordForm(false); }}
-              className="w-full bg-[#4CAF50] text-white font-bold py-4 rounded-xl hover:bg-green-600 shadow-lg shadow-green-100"
-            >
+            <button onClick={() => { setShowSuccessModal(false); if(successMessage.includes("Password")) setShowPasswordForm(false); }} className="w-full bg-[#4CAF50] text-white font-bold py-4 rounded-xl hover:bg-green-600 shadow-lg shadow-green-100">
               Oke
             </button>
           </div>

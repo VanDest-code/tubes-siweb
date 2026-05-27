@@ -21,14 +21,27 @@ export default function PelangganHomePage() {
     const timer = setInterval(() => setTime(new Date()), 1000);
     
     // <-- TAMBAHAN 2: Fungsi untuk menarik data user yang sedang login dari Supabase
+    // <-- REVISI: Mengambil nama asli dari tabel 'profiles' -->
     const dapatkanUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user && user.email) {
-        // Ambil nama dari email (contoh: natalie@gmail.com -> Natalie)
-        const emailPotong = user.email.split('@')[0];
-        const namaRapi = emailPotong.charAt(0).toUpperCase() + emailPotong.slice(1);
-        setNamaPelanggan(namaRapi);
+        // Tarik nama dari database 'profiles' berdasarkan email
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("email", user.email.toLowerCase().trim())
+          .single();
+
+        if (profile && profile.full_name) {
+          // Kalau nama ketemu di database, pakai itu
+          setNamaPelanggan(profile.full_name);
+        } else {
+          // Fallback tetap ke nama depan email kalau di database belum ada
+          const emailPotong = user.email.split('@')[0];
+          const namaRapi = emailPotong.charAt(0).toUpperCase() + emailPotong.slice(1);
+          setNamaPelanggan(namaRapi);
+        }
       }
     };
     
