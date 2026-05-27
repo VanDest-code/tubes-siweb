@@ -1,32 +1,43 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Star, MapPin, User } from "lucide-react";
+import { Star, MapPin, User, Truck } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
-import Image from "next/image";
-import { supabase } from "@/lib/supabase"; // Pastikan import supabase sudah benar
+import { supabase } from "@/lib/supabase";
 
 export default function PilihKurir() {
   const router = useRouter();
   
-  // State untuk menyimpan data dari database
   const [couriers, setCouriers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // State selectedCourier sekarang bertipe string (UUID dari Supabase)
   const [selectedCourier, setSelectedCourier] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [error, setError] = useState("");
+  const [targetVehicle, setTargetVehicle] = useState("Motor"); // Untuk judul
 
-  // 1. Tarik Data Kurir dari Supabase
+  // 1. Tarik Data Kurir (DIFILTER BERDASARKAN ARMADA)
   useEffect(() => {
     const fetchCouriers = async () => {
       try {
         setLoading(true);
+        
+        // Baca data dari halaman sebelumnya
+        const pickupDataRaw = sessionStorage.getItem("pickupData");
+        let requiredVehicle = "Motor"; // Default aman
+        
+        if (pickupDataRaw) {
+          const parsed = JSON.parse(pickupDataRaw);
+          if (parsed.vehicleType) requiredVehicle = parsed.vehicleType;
+        }
+        
+        setTargetVehicle(requiredVehicle); // Simpan state untuk UI
+
+        // Tarik data dengan filter .eq("jenis_kendaraan")
         const { data, error } = await supabase
           .from("couriers")
           .select("*")
-          .order("rating", { ascending: false }); // Urutkan rating tertinggi di atas
+          .eq("jenis_kendaraan", requiredVehicle)
+          .order("rating", { ascending: false });
 
         if (error) throw error;
         if (data) setCouriers(data);
@@ -40,15 +51,12 @@ export default function PilihKurir() {
     fetchCouriers();
   }, []);
 
-  // 2. Navigasi sambil membawa ID Kurir
   const handlePaymentNavigation = () => {
     if (!selectedCourier) {
       setError("Kurir wajib dipilih"); 
       return;
     }
     setError("");
-    
-    // Arahkan ke halaman konfirmasi sambil mengoper ID kurir lewat URL (?courier_id=...)
     router.push(`/auth/dashboard/pelanggan/request-pickup/konfirmasi?courier_id=${selectedCourier}`);
   };
 
@@ -58,8 +66,8 @@ export default function PilihKurir() {
       
       <section className="w-full max-w-[1100px] mx-auto pt-10 px-6 pb-24">
         <div className="mb-10">
-          <h2 className="text-[28px] font-bold text-[#1A1A1A]">Pilih Kurir</h2>
-          <p className="text-gray-500 text-sm">Pilih kurir yang tersedia di dekatmu</p>
+          <h2 className="text-[28px] font-bold text-[#1A1A1A]">Pilih Kurir {targetVehicle}</h2>
+          <p className="text-gray-500 text-sm">Hanya menampilkan kurir dengan armada {targetVehicle} di sekitarmu</p>
         </div>
 
         <div className="w-full flex justify-start mb-6">
@@ -72,10 +80,9 @@ export default function PilihKurir() {
         </div>
         
         <div className="space-y-4 mb-4">
-          {/* Tampilkan loading state jika data masih ditarik */}
           {loading ? (
             <div className="text-center py-10 font-bold text-[#4CAF50] animate-pulse">
-              Memuat daftar kurir...
+              Mencari kurir dengan {targetVehicle}...
             </div>
           ) : couriers.length > 0 ? (
             couriers.map((kurir) => (
@@ -96,15 +103,23 @@ export default function PilihKurir() {
                     <User size={32} className="text-[#4CAF50]" />
                   </div>
                   <div>
-                    {/* Menggunakan kurir.username sesuai nama kolom di database */}
-                    <h3 className="text-lg font-bold text-[#1A1A1A]">{kurir.username}</h3>
-                    <p className="text-gray-500 text-sm font-semibold">{kurir.phone}</p>
+                    <h3 className="text-lg font-bold text-[#1A1A1A] mb-0.5">{kurir.username}</h3>
+                    <p className="text-gray-500 text-sm font-semibold mb-2">{kurir.phone}</p>
+                    
+                    {/* --- REVISI: TAMPILAN KENDARAAN DAN PLAT NOMOR --- */}
+                    <div className="flex gap-2">
+                       <span className="bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
+                         {kurir.jenis_kendaraan}
+                       </span>
+                       <span className="bg-gray-100 text-gray-600 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider border border-gray-200">
+                         {kurir.plat_nomor}
+                       </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 bg-white px-3 py-1 rounded-full shadow-sm shrink-0">
+                <div className="flex items-center gap-1 bg-white px-3 py-1 rounded-full shadow-sm shrink-0 border border-gray-100">
                   <Star size={18} className="fill-yellow-400 text-yellow-400" />
-                  {/* Rating dari database */}
                   <span className="font-bold text-[#1A1A1A]">
                     {Number(kurir.rating).toFixed(1)}
                   </span>
@@ -112,23 +127,25 @@ export default function PilihKurir() {
               </div>
             ))
           ) : (
-            <div className="text-center py-10 text-gray-400 italic">
-              Tidak ada kurir yang tersedia saat ini.
+            <div className="text-center py-10 bg-white rounded-[25px] border border-gray-200">
+              {/* <span className="text-4xl mb-3 block">🧐</span> */}
+              <p className="text-gray-500 font-bold">Waduh!</p>
+              <p className="text-gray-400 text-sm">Tidak ada kurir dengan armada {targetVehicle} yang tersedia saat ini. Coba lagi nanti!</p>
             </div>
           )}
         </div>
 
-        {/* Tampilan Error */}
         {error && (
           <p className="text-red-500 italic text-sm mb-8 ml-2">{error}</p>
         )}
 
         <button
           onClick={handlePaymentNavigation}
+          disabled={!selectedCourier}
           className={`w-full py-5 rounded-[25px] font-bold text-lg transition-all shadow-lg ${
             selectedCourier
               ? "bg-[#4CAF50] text-white hover:bg-[#43A047]"
-              : "bg-gray-300 text-gray-500 cursor-pointer" 
+              : "bg-gray-300 text-gray-400 cursor-not-allowed" 
           }`}
         >
           Lanjutkan Pembayaran

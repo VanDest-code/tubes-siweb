@@ -113,7 +113,7 @@ function KonfirmasiPickupContent() {
       <section className="max-w-[1200px] mx-auto pt-12 px-6">
         <div className="mb-10">
           <h2 className="text-[28px] font-bold text-[#1A1A1A]">Konfirmasi Pickup</h2>
-          <p className="text-gray-500 text-sm">Request pickup kamu sudah masuk!</p>
+          <p className="text-gray-500 text-sm">Segera konfirmasi dan Pilih Metode Pembayaran!</p>
         </div>
 
         <div className="w-full flex justify-start mb-6">

@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation"; 
 import Sidebar from "@/components/layout/Sidebar";
 import { ChevronDown } from "lucide-react";
+import { supabase } from "@/lib/supabase"; 
 
 export default function RequestPickupPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -11,11 +12,57 @@ export default function RequestPickupPage() {
   const [formData, setFormData] = useState({
     senderName: "", senderPhone: "", senderAddress: "",
     receiverName: "", receiverPhone: "", receiverAddress: "",
-    itemType: "", destination: "", weight: "", note: ""
+    itemType: "", destination: "", weight: "", note: "", 
+    vehicleType: "Motor" // Default Motor
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // --- LOGIKA 1: Tarik Draft ATAU Tarik Data Profil ---
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      // Cek memori draft browser
+      const savedDraft = sessionStorage.getItem("pickupDraft");
+      
+      if (savedDraft) {
+        // Kalau ada ketikan yang belum selesai, pulihkan datanya!
+        setFormData(JSON.parse(savedDraft));
+      } else {
+        // Kalau kosong, bantu isikan nama & telepon dari profil database
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session?.user) {
+            const user = session.user;
+            let nama = user.user_metadata?.username || "";
+            if (!nama && user.email) {
+              nama = user.email.split('@')[0].charAt(0).toUpperCase() + user.email.split('@')[0].slice(1);
+            }
+            const telepon = user.user_metadata?.phone || "";
+
+            setFormData(prev => ({
+              ...prev,
+              senderName: nama,
+              senderPhone: telepon, 
+            }));
+          }
+        } catch (error) {
+          console.error("Gagal menarik data profil:", error);
+        }
+      }
+    };
+
+    fetchInitialData();
+  }, []);
+
+  // --- LOGIKA 2: Auto-Save Ketikan Pelanggan ---
+  useEffect(() => {
+    // Simpan ke draft hanya jika ada minimal 1 huruf yang diisi pelanggan (agar tidak nge-save form kosong)
+    if (formData.senderName || formData.receiverName || formData.senderAddress || formData.note) {
+      sessionStorage.setItem("pickupDraft", JSON.stringify(formData));
+    }
+  }, [formData]);
+  
   const handleValidation = () => {
     let newErrors: Record<string, string> = {};
     if (!formData.senderName) newErrors.senderName = "Nama wajib diisi";
@@ -30,22 +77,9 @@ export default function RequestPickupPage() {
     
     setErrors(newErrors);
 
-    // Jika tidak ada error, eksekusi logika pintar penentuan kendaraan
     if (Object.keys(newErrors).length === 0) {
-      
-      // LOGIKA OTOMATIS: Penentuan jenis kendaraan berdasarkan berat
-      let calculatedVehicle = "Motor";
-      if (formData.weight === "5-10 kg") {
-        calculatedVehicle = "Mobil";
-      }
-
-      // Gabungkan data form dengan data kendaraan otomatis
-      const finalDataToSubmit = {
-        ...formData,
-        vehicleType: calculatedVehicle // Field tersembunyi untuk Supabase
-      };
-
-      sessionStorage.setItem("pickupData", JSON.stringify(finalDataToSubmit));
+      // Lulus validasi -> Simpan sebagai pickupData untuk halaman selanjutnya
+      sessionStorage.setItem("pickupData", JSON.stringify(formData));
       router.push("/auth/dashboard/pelanggan/request-pickup/pilih-kurir");
     }
   };
@@ -61,25 +95,24 @@ export default function RequestPickupPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <SectionCard title="Data Pengirim">
-            <InputField label="Nama" placeholder="Masukkan nama" error={errors.senderName} 
+            <InputField label="Nama" placeholder="Masukkan nama" value={formData.senderName} error={errors.senderName} 
               onChange={(v: string) => setFormData({...formData, senderName: v})} />
-            <InputField label="No.Telepon" placeholder="Masukkan no.telepon" error={errors.senderPhone} 
+            <InputField label="No.Telepon" placeholder="Masukkan no.telepon" value={formData.senderPhone} error={errors.senderPhone} 
               onChange={(v: string) => setFormData({...formData, senderPhone: v})} />
-            <InputField label="Alamat Pickup" placeholder="Masukkan alamat" error={errors.senderAddress} 
+            <InputField label="Alamat Pickup" placeholder="Masukkan alamat" value={formData.senderAddress} error={errors.senderAddress} 
               onChange={(v: string) => setFormData({...formData, senderAddress: v})} />
           </SectionCard>
 
           <SectionCard title="Data Penerima">
-            <InputField label="Nama" placeholder="Masukkan nama" error={errors.receiverName} 
+            <InputField label="Nama" placeholder="Masukkan nama" value={formData.receiverName} error={errors.receiverName} 
               onChange={(v: string) => setFormData({...formData, receiverName: v})} />
-            <InputField label="No.Telepon" placeholder="Masukkan no.telepon" error={errors.receiverPhone} 
+            <InputField label="No.Telepon" placeholder="Masukkan no.telepon" value={formData.receiverPhone} error={errors.receiverPhone} 
               onChange={(v: string) => setFormData({...formData, receiverPhone: v})} />
-            <InputField label="Alamat Tujuan" placeholder="Masukkan alamat" error={errors.receiverAddress} 
+            <InputField label="Alamat Tujuan" placeholder="Masukkan alamat" value={formData.receiverAddress} error={errors.receiverAddress} 
               onChange={(v: string) => setFormData({...formData, receiverAddress: v})} />
           </SectionCard>
         </div>
 
-        {/* Kembali ke layout 3 kolom yang estetik */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <DropdownField 
             label="Jenis Barang" 
@@ -105,8 +138,48 @@ export default function RequestPickupPage() {
             placeholder={formData.weight || "Pilih berat"} 
             error={errors.weight}
             options={["< 1 kg", "1-5 kg", "5-10 kg"]}
-            onSelect={(v: string) => setFormData({...formData, weight: v})}
+            onSelect={(v: string) => {
+              if (v === "5-10 kg") {
+                setFormData({...formData, weight: v, vehicleType: "Mobil"});
+              } else {
+                setFormData({...formData, weight: v});
+              }
+            }}
           />
+        </div>
+
+        <div className="bg-white border border-black rounded-[25px] p-7 mb-6 shadow-sm">
+          <h3 className="mb-4 text-[15px]">
+            <span className="font-bold">Pilihan Armada</span> <span className="font-normal">(Kurang dari 5 kg Gunakan Motor)</span>
+          </h3>
+          <div className="flex gap-4">
+            <button
+              onClick={() => setFormData({...formData, vehicleType: "Motor"})}
+              disabled={formData.weight === "5-10 kg"}
+              className={`flex-1 py-4 rounded-xl font-bold transition-all border-2 flex items-center justify-center gap-2 ${
+                formData.vehicleType === "Motor" 
+                  ? "bg-green-100 border-green-500 text-green-700 shadow-sm" 
+                  : "bg-gray-50 border-gray-200 text-gray-400"
+              } ${formData.weight === "5-10 kg" ? "opacity-50 cursor-not-allowed" : "hover:bg-green-50"}`}
+            >
+              Motor
+            </button>
+            <button
+              onClick={() => setFormData({...formData, vehicleType: "Mobil"})}
+              className={`flex-1 py-4 rounded-xl font-bold transition-all border-2 flex items-center justify-center gap-2 ${
+                formData.vehicleType === "Mobil" 
+                  ? "bg-green-100 border-green-500 text-green-700 shadow-sm" 
+                  : "bg-gray-50 border-gray-200 text-gray-500 hover:bg-green-50"
+              }`}
+            >
+              Mobil
+            </button>
+          </div>
+          {formData.weight === "5-10 kg" && (
+            <p className="text-xs text-red-500 mt-3 italic">
+              *Berat 5-10 kg kapasitasnya terlalu besar untuk Motor, armada otomatis dialihkan ke Mobil.
+            </p>
+          )}
         </div>
 
         <div className="bg-white border border-black rounded-[25px] p-7 mb-8 shadow-sm">
@@ -114,6 +187,7 @@ export default function RequestPickupPage() {
           <textarea 
             placeholder="Catatan tambahan untuk kurir.." 
             className="w-full bg-[#EBF5EB] border border-[#A5D6A7] rounded-2xl p-4 h-32 outline-none"
+            value={formData.note}
             onChange={(e) => setFormData({...formData, note: e.target.value})}
           />
         </div>
@@ -138,16 +212,17 @@ function SectionCard({ title, children }: { title: string, children: React.React
   );
 }
 
-function InputField({ label, placeholder, error, onChange }: { label: string, placeholder: string, error?: string, onChange: (val: string) => void }) {
+function InputField({ label, placeholder, value, error, onChange }: { label: string, placeholder: string, value?: string, error?: string, onChange: (val: string) => void }) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-[13px] font-bold ml-1">{label}</label>
       <input 
+        value={value || ""} 
         onChange={(e) => onChange(e.target.value)}
         className={`bg-[#EBF5EB] border ${error ? 'border-red-400 focus:ring-red-100' : 'border-[#A5D6A7] focus:border-green-500'} rounded-xl px-4 py-3 outline-none text-sm placeholder:text-gray-400 focus:ring-2 focus:ring-green-100 transition-all`}
         placeholder={placeholder}
       />
-      {error && <span className="text-[11px] text-red-500 font-bold italic ml-1 mt-0.5">{error}</span>}
+      {error && <span className="text-[11px] text-red-500 italic ml-1 mt-0.5">{error}</span>}
     </div>
   );
 }
@@ -164,7 +239,7 @@ function DropdownField({ label, placeholder, error, options, onSelect, isTable }
         <span className={`text-sm ${placeholder.includes("Pilih") ? 'text-gray-400' : 'text-black font-bold'}`}>{placeholder}</span>
         <ChevronDown size={18} className={`text-green-600 transition-transform ${open ? 'rotate-180' : ''}`} />
       </div>
-      {error && <span className="text-[11px] text-red-500 font-bold italic mt-1 block absolute bottom-2 left-7">{error}</span>}
+      {error && <span className="text-[11px] text-red-500 italic mt-1 block absolute bottom-2 left-7">{error}</span>}
 
       {open && (
         <div className="absolute left-7 right-7 top-[110px] z-20 bg-white border border-black rounded-lg overflow-hidden shadow-xl">

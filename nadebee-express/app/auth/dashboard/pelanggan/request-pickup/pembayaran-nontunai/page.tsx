@@ -42,6 +42,8 @@ export default function NontunaiPage() {
     
     const savedData = sessionStorage.getItem("pickupData");
     const savedCost = sessionStorage.getItem("totalOngkir");
+    const savedCourierId = sessionStorage.getItem("selectedCourierId");
+    const savedPayment = sessionStorage.getItem("paymentMethod"); // <-- Ambil Metode Pembayaran
 
     if (!savedData) {
       alert("Data form hilang, silakan isi ulang.");
@@ -55,14 +57,16 @@ export default function NontunaiPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...JSON.parse(savedData),
-          shippingCost: parseInt(savedCost || "20000") // Kirim ongkir hasil kalkulasi
+          shippingCost: parseInt(savedCost || "20000"),
+          courier_id: savedCourierId,
+          payment_method: savedPayment || "Non Tunai" // <-- Kirim ke API Backend
         })
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        sessionStorage.clear(); // Bersihkan sessionStorage browser
+        sessionStorage.clear(); 
         router.push(`/auth/dashboard/pelanggan/request-pickup/berhasil?resi=${result.resi}`);
       } else {
         alert("Terjadi kesalahan sistem saat menyimpan data.");

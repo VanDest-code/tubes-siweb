@@ -1,23 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Edit2, Check, Lock } from "lucide-react";
+import { User, Mail, Phone, Edit2, Check, Lock, Trash2, Truck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 export default function ProfilKurirPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Data Kurir
+  // Data Kurir (Ditambah Kendaraan & Plat)
   const [courierData, setCourierData] = useState({
     id: "",
     username: "",
     email: "",
     phone: "",
+    jenis_kendaraan: "",
+    plat_nomor: "",
   });
 
-  // Statistik Database Asli
   const [stats, setStats] = useState({
     totalPengiriman: 0,
     avgRating: "0.0",
@@ -48,6 +51,8 @@ export default function ProfilKurirPage() {
           username: profile.username || "Kurir",
           email: profile.email || "",
           phone: profile.phone || "",
+          jenis_kendaraan: profile.jenis_kendaraan || "-",
+          plat_nomor: profile.plat_nomor || "-",
         });
       }
 
@@ -75,7 +80,6 @@ export default function ProfilKurirPage() {
               jumlahPemberiRating++;
             }
           } else if (status !== "dibatalkan" && status !== "ditolak" && status !== "menunggu kurir") {
-            // Hitung yang sedang di jalan / diambil
             aktif++;
           }
         });
@@ -87,7 +91,7 @@ export default function ProfilKurirPage() {
         setStats({
           totalPengiriman: selesai,
           avgRating: rataRataRating,
-          pesananAktif: aktif, // Pengganti "On-Time"
+          pesananAktif: aktif, 
         });
       }
 
@@ -106,6 +110,7 @@ export default function ProfilKurirPage() {
         .update({
           username: courierData.username,
           phone: courierData.phone,
+          plat_nomor: courierData.plat_nomor, // Tambahan simpan plat
         })
         .eq("id", courierData.id);
 
@@ -117,6 +122,31 @@ export default function ProfilKurirPage() {
       alert("Gagal menyimpan profil.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // LOGIKA HAPUS AKUN (Tuntutan Asdos)
+  const handleHapusAkun = async () => {
+    const isConfirmed = window.confirm("PERINGATAN! Apakah Anda yakin ingin menghapus akun kurir Anda secara permanen? Data yang dihapus tidak bisa dikembalikan.");
+    
+    if (!isConfirmed) return;
+
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from("couriers")
+        .delete()
+        .eq("id", courierData.id);
+
+      if (error) throw error;
+
+      alert("Akun berhasil dihapus.");
+      sessionStorage.clear(); 
+      router.push("/auth/login"); 
+    } catch (error: any) {
+      console.error("Gagal menghapus:", error);
+      alert("Terjadi kesalahan saat menghapus akun: " + error.message);
+      setLoading(false);
     }
   };
 
@@ -135,7 +165,6 @@ export default function ProfilKurirPage() {
           
           {/* --- KARTU STATISTIK ATAS --- */}
           <div className="bg-white border border-green-400 rounded-[32px] p-8 shadow-sm flex flex-col items-center">
-            
             <div className="w-24 h-24 border-2 border-green-500 rounded-full flex items-center justify-center text-green-500 bg-green-50 mb-4">
               <User size={40} />
             </div>
@@ -157,7 +186,7 @@ export default function ProfilKurirPage() {
             </div>
           </div>
 
-          {/* --- KARTU INFORMASI PRIBADI (BEBAS KENDARAAN) --- */}
+          {/* --- KARTU INFORMASI PRIBADI --- */}
           <div className="bg-white border border-green-400 rounded-[32px] p-8 md:p-10 shadow-sm relative">
             <div className="flex justify-between items-center mb-8">
               <h3 className="text-lg font-black text-gray-900">Informasi Pribadi</h3>
@@ -172,7 +201,7 @@ export default function ProfilKurirPage() {
 
             <div className="space-y-6">
               
-              {/* Field Username */}
+              {/* Username */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
                   <User size={16} /> Username
@@ -186,7 +215,7 @@ export default function ProfilKurirPage() {
                 />
               </div>
 
-              {/* Field Email (Terkunci) */}
+              {/* Email */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
                   <Mail size={16} /> Email
@@ -202,7 +231,7 @@ export default function ProfilKurirPage() {
                 </div>
               </div>
 
-              {/* Field Nomor Telepon */}
+              {/* Nomor Telepon */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
                   <Phone size={16} /> Nomor Telepon
@@ -216,8 +245,56 @@ export default function ProfilKurirPage() {
                 />
               </div>
 
+              {/* Jenis Kendaraan (Hanya Read) */}
+              <div className="flex gap-4">
+                 <div className="flex-1">
+                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                      <Truck size={16} /> Armada
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={courierData.jenis_kendaraan}
+                        disabled
+                        className="w-full p-4 rounded-xl text-sm font-medium border bg-green-50/30 border-green-100 text-gray-500 pr-12"
+                      />
+                      <Lock size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                    </div>
+                 </div>
+
+                 {/* Plat Nomor (Bisa diedit) */}
+                 <div className="flex-1">
+                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+                       Plat Nomor
+                    </label>
+                    <input
+                      type="text"
+                      value={courierData.plat_nomor}
+                      onChange={(e) => setCourierData({...courierData, plat_nomor: e.target.value})}
+                      disabled={!isEditing}
+                      className={`w-full p-4 rounded-xl text-sm font-medium border ${isEditing ? "bg-white border-green-400 focus:ring-2 focus:ring-green-100 outline-none text-black uppercase" : "bg-gray-50/50 border-gray-100 text-gray-500 uppercase"}`}
+                      placeholder="Misal: AB 1234 CD"
+                    />
+                 </div>
+              </div>
+
             </div>
           </div>
+
+          {/* --- TOMBOL HAPUS AKUN (ZONA MERAH) --- */}
+          <div className="mt-10 border-t border-red-100 pt-6">
+            <h3 className="text-red-500 font-bold mb-2 flex items-center gap-2">
+               <Trash2 size={20} /> Warning!
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">Tindakan ini akan menghapus seluruh data Anda dari sistem secara permanen.</p>
+            <button 
+              onClick={handleHapusAkun}
+              className="w-full bg-red-50 text-red-600 border border-red-200 font-bold py-4 rounded-2xl hover:bg-red-500 hover:text-white transition-all"
+            >
+              Hapus Akun Saya
+            </button>
+          </div>
+
         </div>
       )}
     </div>

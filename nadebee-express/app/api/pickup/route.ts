@@ -30,7 +30,6 @@ export async function POST(request: Request) {
       .insert([
         {
           resi_number: newResiNumber,
-          // GANTI EMAIL DI BAWAH INI DENGAN EMAIL YANG ADA DI DATABASE-MU
           customer_email: body.customerEmail || "natalie@gmail.com", 
           sender_name: body.senderName,
           sender_phone: body.senderPhone,
@@ -42,7 +41,10 @@ export async function POST(request: Request) {
           item_category: body.itemType,
           item_name: "Paket Pickup", 
           weight_range: body.weight,
-          shipping_cost: body.shippingCost, // <-- SUDAH DINAMIS
+          shipping_cost: body.shippingCost, 
+          jenis_kendaraan: body.vehicleType, 
+          courier_id: body.courier_id,       
+          payment_method: body.payment_method, // <--- BARIS TERBARU: Menyimpan Metode Pembayaran ke DB!
           status: "Menunggu Kurir",
           note: body.note || null
         }

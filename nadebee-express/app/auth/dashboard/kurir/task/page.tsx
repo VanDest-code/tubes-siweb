@@ -62,6 +62,7 @@ export default function TaskPage() {
       if (error) throw error;
 
       if (data) {
+        // Filter otomatis membuang yang dibatalkan, ditolak, atau selesai
         const activeData = data.filter((d: any) => {
           const s = (d.status || "").toLowerCase().trim();
           return s !== "selesai" && s !== "dibatalkan" && s !== "ditolak";
@@ -80,8 +81,8 @@ export default function TaskPage() {
           receiverName: d.receiver_name,
           receiverPhone: d.receiver_phone || "-",
           weight: d.weight_range || "-",
-          payment: "Sesuai Aplikasi", 
-          notes: d.note || "Tolong hati-hati ya kurir!" 
+          payment: d.payment_method || "Tunai", // <--- SEKARANG DINAMIS: Mengambil dari database!
+          notes: d.note || "Tidak ada catatan" 
         }));
         setAllTasks(formattedData);
       }
@@ -95,6 +96,21 @@ export default function TaskPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTab]);
+
+  // --- REVISI: PENANGANAN PESANAN DIBATALKAN SAAT DETAIL TERBUKA ---
+  useEffect(() => {
+    if (selectedTask) {
+      const isTaskStillExist = allTasks.find((task) => task.id === selectedTask.id);
+      
+      if (!isTaskStillExist) {
+        alert(`🚨 Mohon maaf, pesanan ${selectedTask.id} baru saja dibatalkan oleh pelanggan.`);
+        
+        // Tutup semua pop-up dan paksa kurir kembali ke daftar utama
+        setShowAcceptConfirm(false);
+        setSelectedTask(null);
+      }
+    }
+  }, [allTasks, selectedTask]);
 
   const waitingTasks = allTasks.filter(t => t.status.toLowerCase().trim() === "menunggu kurir");
   const activeTasks = allTasks.filter(t => t.status.toLowerCase().trim() !== "menunggu kurir");

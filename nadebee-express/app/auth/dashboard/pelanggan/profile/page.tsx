@@ -40,27 +40,28 @@ export default function ProfilePage() {
 
         const userEmail = session.user.email ? session.user.email.toLowerCase().trim() : "";
 
-        // Ambil data profil berdasarkan email
+        // REVISI: Ambil data profil berdasarkan email menggunakan kolom yang benar (username dan phone)
         const { data, error: profileError } = await supabase
           .from("profiles")
-          .select("full_name, phone_number, email")
+          .select("username, phone, email") 
           .eq("email", userEmail)
           .single();
 
         if (profileError) {
           console.log("⚠️ Menggunakan data fallback dari session.");
           setFormData({
-            username: session.user.user_metadata?.full_name || "Pelanggan Nadebee",
-            phone: session.user.phone || "",
+            username: session.user.user_metadata?.username || "Pelanggan Nadebee",
+            phone: session.user.user_metadata?.phone || "",
             email: userEmail
           });
           return;
         }
 
         if (data) {
+          // REVISI: Mapping ke state menggunakan kolom yang benar
           setFormData({
-            username: data.full_name || "",
-            phone: data.phone_number || "",
+            username: data.username || "",
+            phone: data.phone || "",
             email: data.email || ""
           });
         }
@@ -73,25 +74,25 @@ export default function ProfilePage() {
     getProfile();
   }, [router]);
 
-  // 2. Fungsi Update Data Profil (Menggunakan .update agar lebih aman)
+  // 2. Fungsi Update Data Profil
   const handleUpdateProfile = async () => {
     try {
       setIsSaving(true);
       const targetEmail = formData.email.toLowerCase().trim();
       
+      // REVISI: Update ke database menggunakan kolom yang benar
       const { data, error } = await supabase
         .from("profiles")
         .update({
-          full_name: formData.username,
-          phone_number: formData.phone,
+          username: formData.username,
+          phone: formData.phone,
           user_type: "pelanggan"
         })
         .eq("email", targetEmail)
-        .select(); // Tambahkan .select() untuk mengecek apakah data benar-benar berubah
+        .select(); 
 
       if (error) throw error;
       
-      // Mencegah silent failure jika RLS menghalangi update
       if (!data || data.length === 0) {
         throw new Error("Update diblokir oleh sistem keamanan database (RLS)!");
       }

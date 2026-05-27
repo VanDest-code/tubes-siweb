@@ -19,9 +19,11 @@ export default function TunaiPage() {
   const handleKirimData = async () => {
     setIsLoading(true);
     
-    // 1. Ambil data form yang dititipkan di browser tadi
+    // Ambil data form, ongkir, id kurir, dan metode pembayaran dari sessionStorage
     const savedData = sessionStorage.getItem("pickupData");
     const savedCost = sessionStorage.getItem("totalOngkir");
+    const savedCourierId = sessionStorage.getItem("selectedCourierId");
+    const savedPayment = sessionStorage.getItem("paymentMethod"); // <-- Ambil Metode Pembayaran
 
     if (!savedData) {
       alert("Data form hilang, silakan isi ulang.");
@@ -30,21 +32,21 @@ export default function TunaiPage() {
     }
 
     try {
-      // 2. Tembak ke API backend kita
       const response = await fetch("/api/pickup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Kirim gabungan data form dan ongkir
+        // Kirim semuanya ke API backend
         body: JSON.stringify({
             ...JSON.parse(savedData),
-            shippingCost: parseInt(savedCost || "20000")
+            shippingCost: parseInt(savedCost || "20000"),
+            courier_id: savedCourierId,
+            payment_method: savedPayment || "Tunai" // <-- Kirim ke API Backend
         })
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        // 3. Bersihkan memori sementara, lalu lempar nomor resi baru ke URL
         sessionStorage.clear();
         router.push(`/auth/dashboard/pelanggan/request-pickup/berhasil?resi=${result.resi}`);
       } else {
