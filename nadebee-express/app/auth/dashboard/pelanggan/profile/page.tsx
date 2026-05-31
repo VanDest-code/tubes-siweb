@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Sidebar from "@/components/layout/Sidebar";
-import { User, Phone, Mail, Edit3, CheckCircle2, Key, LogOut, Check } from "lucide-react";
+import { User, Phone, Mail, Edit3, CheckCircle2, Key, LogOut, Check, Camera, Trash2 } from "lucide-react"; // <-- Tambah Camera
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -14,11 +14,13 @@ export default function ProfilePage() {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [uploading, setUploading] = useState(false); // <-- State loading upload
 
   const [formData, setFormData] = useState({
     username: "",
     phone: "",
-    email: ""
+    email: "",
+    avatar_url: "" // <-- Tambahan state avatar
   });
   const [isEditMode, setIsEditMode] = useState(false);
 
@@ -37,10 +39,10 @@ export default function ProfilePage() {
 
         const userEmail = session.user.email ? session.user.email.toLowerCase().trim() : "";
 
-        // KEMBALI KE KOLOM ASLI: full_name dan phone_number
+        // Tambahkan avatar_url ke dalam select query
         const { data, error: profileError } = await supabase
           .from("profiles")
-          .select("full_name, phone_number, email") 
+          .select("full_name, phone_number, email, avatar_url") 
           .eq("email", userEmail)
           .single();
 
@@ -49,7 +51,8 @@ export default function ProfilePage() {
           setFormData({
             username: session.user.user_metadata?.username || "Pelanggan Nadebee",
             phone: session.user.user_metadata?.phone || "",
-            email: userEmail
+            email: userEmail,
+            avatar_url: ""
           });
           return;
         }
@@ -58,7 +61,8 @@ export default function ProfilePage() {
           setFormData({
             username: data.full_name || "",
             phone: data.phone_number || "",
-            email: data.email || ""
+            email: data.email || "",
+            avatar_url: data.avatar_url || "" // <-- Set data avatar dari database
           });
         }
       } catch (err) {
@@ -78,8 +82,8 @@ export default function ProfilePage() {
       const { data, error } = await supabase
         .from("profiles")
         .update({
-          full_name: formData.username, // KEMBALI KE KOLOM ASLI
-          phone_number: formData.phone, // KEMBALI KE KOLOM ASLI
+          full_name: formData.username, 
+          phone_number: formData.phone, 
           user_type: "pelanggan"
         })
         .eq("email", targetEmail)
@@ -99,6 +103,86 @@ export default function ProfilePage() {
       alert(`Gagal menyimpan perubahan: ${err.message || "Periksa koneksi atau keamanan database."}`);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // --- LOGIKA UPLOAD FOTO PELANGGAN KE SUPABASE ---
+  const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploading(true);
+      
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error("Anda harus memilih gambar.");
+      }
+
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `pelanggan-${Math.random()}.${fileExt}`; // Nama file unik
+      const filePath = `${fileName}`;
+
+      // 1. Upload ke bucket
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Ambil public URL
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const publicUrl = data.publicUrl;
+
+      // 3. Simpan URL ke tabel profiles
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('email', formData.email.toLowerCase().trim()); // Update berdasarkan email pelanggan
+
+      if (updateError) throw updateError;
+
+      // 4. Update UI
+      setFormData({ ...formData, avatar_url: publicUrl });
+      alert("Foto profil berhasil diperbarui!");
+      
+    } catch (error: any) {
+      alert("Gagal mengunggah foto: " + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // --- LOGIKA HAPUS FOTO PELANGGAN ---
+  const handleDeleteAvatar = async () => {
+    const isConfirmed = window.confirm("Yakin ingin menghapus foto profil?");
+    if (!isConfirmed) return;
+
+    try {
+      setUploading(true);
+
+      // 1. (Opsional tapi direkomendasikan) Ekstrak nama file dari URL untuk dihapus dari Storage
+      // Contoh URL: https://[project-id].supabase.co/storage/v1/object/public/avatars/pelanggan-123.png
+      if (formData.avatar_url) {
+        const fileName = formData.avatar_url.split('/').pop();
+        if (fileName) {
+          await supabase.storage.from('avatars').remove([fileName]);
+        }
+      }
+
+      // 2. Kosongkan kolom avatar_url di tabel profiles
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: "" })
+        .eq('email', formData.email.toLowerCase().trim());
+
+      if (updateError) throw updateError;
+
+      // 3. Update UI kembali ke default
+      setFormData({ ...formData, avatar_url: "" });
+      alert("Foto profil berhasil dihapus!");
+      
+    } catch (error: any) {
+      alert("Gagal menghapus foto: " + error.message);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -169,13 +253,57 @@ export default function ProfilePage() {
           <p className="text-sm text-gray-500 font-medium mt-1">Kelola informasi akunmu</p>
         </div>
 
+        {/* --- UI FOTO PROFIL PELANGGAN --- */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-20 h-20 border-2 border-[#4CAF50] rounded-full flex items-center justify-center bg-white mb-4 shadow-sm">
-            <User className="text-[#4CAF50]" size={32} />
+          <div className="relative mb-4 group">
+            <div className="w-24 h-24 border-4 border-[#4CAF50] rounded-full overflow-hidden flex items-center justify-center text-[#4CAF50] bg-green-50 relative shadow-sm">
+              {formData.avatar_url ? (
+                <img src={formData.avatar_url} alt="Avatar Pelanggan" className="w-full h-full object-cover" />
+              ) : (
+                <User size={40} />
+              )}
+              
+              {/* Overlay loading */}
+              {uploading && (
+                <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-green-600 animate-pulse">Loading...</span>
+                </div>
+              )}
+            </div>
+            
+            {/* VVV --- TOMBOL HAPUS (Kiri Bawah) --- VVV */}
+            {formData.avatar_url && (
+              <button
+                onClick={handleDeleteAvatar}
+                disabled={uploading}
+                className={`absolute bottom-0 left-0 w-8 h-8 bg-white rounded-full flex items-center justify-center text-red-500 cursor-pointer hover:bg-red-50 border-2 border-red-100 shadow-md transition-all z-10 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                title="Hapus Foto"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+            {/* ^^^ ------------------------------------------------ ^^^ */}
+
+            {/* Tombol Kamera (Input File Tersembunyi - Kanan Bawah) */}
+            <label 
+              htmlFor="avatar-upload-pelanggan" 
+              className={`absolute bottom-0 right-0 w-8 h-8 bg-[#4CAF50] rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-green-600 border-2 border-white shadow-md transition-all z-10 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+            >
+              <Camera size={14} />
+            </label>
+            <input 
+              id="avatar-upload-pelanggan"
+              type="file" 
+              accept="image/*"
+              className="hidden"
+              onChange={uploadAvatar}
+              disabled={uploading}
+            />
           </div>
           <h2 className="text-xl font-black text-gray-900">{formData.username || "Pelanggan"}</h2>
           <p className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-wider">Akun Terverifikasi</p>
         </div>
+        {/* --------------------------------- */}
 
         <div className="w-full bg-white border border-gray-200 rounded-[32px] p-8 shadow-sm mb-6 relative">
           <div className="flex justify-between items-center mb-8">

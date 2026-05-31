@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Edit2, Check, Lock, Trash2, Truck } from "lucide-react";
+import { User, Mail, Phone, Edit2, Check, Lock, Trash2, Truck, Camera } from "lucide-react"; // <-- Tambah Camera
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
@@ -10,8 +10,9 @@ export default function ProfilKurirPage() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [uploading, setUploading] = useState(false); // <-- State untuk loading upload foto
 
-  // Data Kurir (Ditambah Kendaraan & Plat)
+  // Data Kurir (Ditambah avatar_url)
   const [courierData, setCourierData] = useState({
     id: "",
     username: "",
@@ -19,6 +20,7 @@ export default function ProfilKurirPage() {
     phone: "",
     jenis_kendaraan: "",
     plat_nomor: "",
+    avatar_url: "", // <-- Tambahan kolom foto
   });
 
   const [stats, setStats] = useState({
@@ -53,10 +55,11 @@ export default function ProfilKurirPage() {
           phone: profile.phone || "",
           jenis_kendaraan: profile.jenis_kendaraan || "-",
           plat_nomor: profile.plat_nomor || "-",
+          avatar_url: profile.avatar_url || "", // <-- Ambil link foto dari database
         });
       }
 
-      // 2. Tarik Data Pesanan untuk Statistik (Sesuai Database)
+      // 2. Tarik Data Pesanan untuk Statistik
       const { data: shipments, error: shipError } = await supabase
         .from("shipments")
         .select("status, rating")
@@ -110,7 +113,7 @@ export default function ProfilKurirPage() {
         .update({
           username: courierData.username,
           phone: courierData.phone,
-          plat_nomor: courierData.plat_nomor, // Tambahan simpan plat
+          plat_nomor: courierData.plat_nomor, 
         })
         .eq("id", courierData.id);
 
@@ -125,7 +128,85 @@ export default function ProfilKurirPage() {
     }
   };
 
-  // LOGIKA HAPUS AKUN (Tuntutan Asdos)
+  // --- LOGIKA UPLOAD FOTO KE SUPABASE STORAGE ---
+  const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploading(true);
+      
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error("Anda harus memilih gambar.");
+      }
+
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${courierData.id}-${Math.random()}.${fileExt}`; // Nama file unik
+      const filePath = `${fileName}`;
+
+      // 1. Unggah file ke bucket 'avatars'
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Dapatkan URL publik dari gambar yang baru diunggah
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const publicUrl = data.publicUrl;
+
+      // 3. Simpan URL tersebut ke tabel 'couriers'
+      const { error: updateError } = await supabase
+        .from('couriers')
+        .update({ avatar_url: publicUrl })
+        .eq('id', courierData.id);
+
+      if (updateError) throw updateError;
+
+      // 4. Perbarui tampilan di layar
+      setCourierData({ ...courierData, avatar_url: publicUrl });
+      alert("Foto profil berhasil diperbarui!");
+      
+    } catch (error: any) {
+      alert("Gagal mengunggah foto: " + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // --- LOGIKA HAPUS FOTO KURIR ---
+  const handleDeleteAvatar = async () => {
+    const isConfirmed = window.confirm("Yakin ingin menghapus foto profil?");
+    if (!isConfirmed) return;
+
+    try {
+      setUploading(true);
+
+      // 1. Ekstrak nama file dan hapus dari Storage
+      if (courierData.avatar_url) {
+        const fileName = courierData.avatar_url.split('/').pop();
+        if (fileName) {
+          await supabase.storage.from('avatars').remove([fileName]);
+        }
+      }
+
+      // 2. Kosongkan URL di tabel couriers
+      const { error: updateError } = await supabase
+        .from('couriers')
+        .update({ avatar_url: "" })
+        .eq('id', courierData.id);
+
+      if (updateError) throw updateError;
+
+      // 3. Update UI kembali ke default
+      setCourierData({ ...courierData, avatar_url: "" });
+      alert("Foto profil berhasil dihapus!");
+      
+    } catch (error: any) {
+      alert("Gagal menghapus foto: " + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleHapusAkun = async () => {
     const isConfirmed = window.confirm("PERINGATAN! Apakah Anda yakin ingin menghapus akun kurir Anda secara permanen? Data yang dihapus tidak bisa dikembalikan.");
     
@@ -163,11 +244,57 @@ export default function ProfilKurirPage() {
       ) : (
         <div className="space-y-6">
           
-          {/* --- KARTU STATISTIK ATAS --- */}
+          {/* --- KARTU STATISTIK & FOTO PROFIL --- */}
           <div className="bg-white border border-green-400 rounded-[32px] p-8 shadow-sm flex flex-col items-center">
-            <div className="w-24 h-24 border-2 border-green-500 rounded-full flex items-center justify-center text-green-500 bg-green-50 mb-4">
-              <User size={40} />
+            
+            {/* VVV --- UI AVATAR UPLOAD --- VVV */}
+            <div className="relative mb-4 group">
+              <div className="w-28 h-28 border-4 border-green-500 rounded-full overflow-hidden flex items-center justify-center text-green-500 bg-green-50 relative">
+                {courierData.avatar_url ? (
+                  <img src={courierData.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={48} />
+                )}
+                
+                {/* Overlay loading */}
+                {uploading && (
+                  <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                    <span className="text-[10px] font-bold text-green-600 animate-pulse">Loading...</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* VVV --- TOMBOL HAPUS (Kiri Bawah) --- VVV */}
+              {courierData.avatar_url && (
+                <button
+                  onClick={handleDeleteAvatar}
+                  disabled={uploading}
+                  className={`absolute bottom-0 left-0 w-9 h-9 bg-white rounded-full flex items-center justify-center text-red-500 cursor-pointer hover:bg-red-50 border-2 border-red-100 shadow-md transition-all z-10 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                  title="Hapus Foto"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+              {/* ^^^ ------------------------------------------------ ^^^ */}
+
+              {/* Tombol Kamera (Input File Tersembunyi - Kanan Bawah) */}
+              <label 
+                htmlFor="avatar-upload" 
+                className={`absolute bottom-0 right-0 w-9 h-9 bg-green-500 rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-green-600 border-2 border-white shadow-md transition-all z-10 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                <Camera size={16} />
+              </label>
+              <input 
+                id="avatar-upload"
+                type="file" 
+                accept="image/*"
+                className="hidden"
+                onChange={uploadAvatar}
+                disabled={uploading}
+              />
             </div>
+            {/* ^^^ ------------------------ ^^^ */}
+
             <h2 className="text-xl font-black text-gray-900 mb-8">{courierData.username}</h2>
 
             <div className="flex w-full justify-between px-4 md:px-12 text-center divide-x divide-gray-100">

@@ -19,10 +19,20 @@ export default function LoginPelanggan() {
     console.log("Password yang diinput:", password);
     console.log("Email yang diinput:", email);
     // 1. Validasi Format (Frontend)
-    if (!email.includes('@')) newErrors.email = "Format email salah (harus ada @)";
-    if (!email) newErrors.email = "Email wajib diisi";
-    if (password.length < 8) newErrors.password = "Password minimal 8 digit";
-    if (!password) newErrors.password = "Password wajib diisi";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // <-- Regex Ketat Asdos
+
+    if (!email) {
+      newErrors.email = "Email wajib diisi";
+    } else if (!emailRegex.test(email)) {
+      newErrors.email = "Format email salah! cth: natalie@gmail.com";
+    }
+
+    if (!password) {
+      newErrors.password = "Password wajib diisi";
+    } else if (password.length < 8 || password.length > 12) {
+      // <-- Tambahan: samakan aturan dengan form register (Min 8, Max 12)
+      newErrors.password = "Password harus 8 - 12 digit"; 
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);

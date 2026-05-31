@@ -98,15 +98,24 @@ export default function PilihKurir() {
                     : "border-green-100 hover:border-green-300"
                 }`}
               >
+                {/* --- KARTU KURIR KIRI --- */}
                 <div className="flex items-center gap-6">
-                  <div className="w-16 h-16 bg-[#E8F5E9] rounded-2xl flex items-center justify-center shrink-0">
-                    <User size={32} className="text-[#4CAF50]" />
+                  
+                  {/* FOTO KURIR DINAMIS */}
+                  <div className="w-16 h-16 bg-[#E8F5E9] rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border border-green-200">
+                    {kurir.avatar_url ? (
+                      <img src={kurir.avatar_url} alt={`Foto ${kurir.username}`} className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={32} className="text-[#4CAF50]" />
+                    )}
                   </div>
+                  
+                  {/* INFO KURIR */}
                   <div>
                     <h3 className="text-lg font-bold text-[#1A1A1A] mb-0.5">{kurir.username}</h3>
                     <p className="text-gray-500 text-sm font-semibold mb-2">{kurir.phone}</p>
-                    
-                    {/* --- REVISI: TAMPILAN KENDARAAN DAN PLAT NOMOR --- */}
+
+                    {/* KENDARAAN DAN PLAT NOMOR */}
                     <div className="flex gap-2">
                        <span className="bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
                          {kurir.jenis_kendaraan}
@@ -118,6 +127,7 @@ export default function PilihKurir() {
                   </div>
                 </div>
 
+                {/* --- KARTU KURIR KANAN (RATING) --- */}
                 <div className="flex items-center gap-1 bg-white px-3 py-1 rounded-full shadow-sm shrink-0 border border-gray-100">
                   <Star size={18} className="fill-yellow-400 text-yellow-400" />
                   <span className="font-bold text-[#1A1A1A]">
@@ -128,7 +138,6 @@ export default function PilihKurir() {
             ))
           ) : (
             <div className="text-center py-10 bg-white rounded-[25px] border border-gray-200">
-              {/* <span className="text-4xl mb-3 block">🧐</span> */}
               <p className="text-gray-500 font-bold">Waduh!</p>
               <p className="text-gray-400 text-sm">Tidak ada kurir dengan armada {targetVehicle} yang tersedia saat ini. Coba lagi nanti!</p>
             </div>

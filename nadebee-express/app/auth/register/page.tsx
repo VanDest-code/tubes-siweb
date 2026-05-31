@@ -23,24 +23,42 @@ export default function RegisterPelanggan() {
   const validate = () => {
     let newErrors: Record<string, string> = {};
 
-    if (!formData.username) newErrors.username = "Username wajib diisi";
+    // 1. Validasi Username
+    if (!formData.username) {
+      newErrors.username = "Username wajib diisi";
+    } else if (formData.username.trim().length < 3) {
+      newErrors.username = "Minimal 3 karakter";
+    } else if (formData.username.length > 30) {
+      newErrors.username = "Maksimal 30 karakter";
+    } else if (!/^[a-zA-Z0-9 ]+$/.test(formData.username)) {
+      newErrors.username = "Hanya boleh huruf, angka, dan spasi";
+    }
+    
+    // 2. REVISI ASDOS: Validasi Email Menggunakan Regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email) {
       newErrors.email = "Email wajib diisi";
-    } else if (!formData.email.includes('@')) {
-      newErrors.email = "Gunakan format Email! cth: pratisthanatalie@gmail.com";
+    } else if (!emailRegex.test(formData.email)) {
+      newErrors.email = "Format email tidak valid! cth: natalie@gmail.com";
     }
+
+    // 3. REVISI ASDOS: Validasi Nomor Telepon (Angka & 10-13 Digit)
     if (!formData.nomorTelepon) {
       newErrors.nomorTelepon = "No.Telepon wajib diisi";
     } else if (!/^\d+$/.test(formData.nomorTelepon)) {
       newErrors.nomorTelepon = "No.Telepon harus angka";
+    } else if (formData.nomorTelepon.length < 10 || formData.nomorTelepon.length > 13) {
+      newErrors.nomorTelepon = "Nomor telepon harus 10-13 digit";
     }
+
+    // 4. Validasi Password
     if (!formData.password) {
       newErrors.password = "Password wajib diisi";
     } else if (formData.password.length < 8 || formData.password.length > 12) {
       newErrors.password = "Min. 8 digit & Maks. 12 digit";
     }
     
-    // <-- Validasi Konfirmasi Password dikembalikan
+    // 5. Validasi Konfirmasi Password
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = "Konfirmasi Password wajib diisi";
     } else if (formData.confirmPassword !== formData.password) {

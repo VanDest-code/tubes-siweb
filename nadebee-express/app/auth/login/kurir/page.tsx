@@ -18,9 +18,19 @@ export default function LoginKurir() {
     let newErrors: {email?: string; code?: string; auth?: string} = {};
 
     // 1. Validasi Format (Frontend)
-    if (!email.includes('@')) newErrors.email = "Format email salah (harus ada @)";
-    if (!email) newErrors.email = "Email wajib diisi";
-    if (!kurirCode) newErrors.code = "Kode Kurir wajib diisi";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; 
+
+    if (!email) {
+      newErrors.email = "Email wajib diisi";
+    } else if (!emailRegex.test(email)) {
+      newErrors.email = "Format email salah! cth: kurir@gmail.com";
+    }
+
+    if (!kurirCode) {
+      newErrors.code = "Kode Kurir wajib diisi";
+    } else if (!/^\d{6}$/.test(kurirCode)) { // <-- Ganti \d{5} jadi \d{6}
+      newErrors.code = "Kode Kurir harus persis 6 digit angka"; // <-- Ganti teksnya
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);

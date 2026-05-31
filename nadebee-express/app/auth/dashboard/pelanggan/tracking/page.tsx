@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Package, AlertCircle, CheckCircle, Clock, ArrowLeft, ArrowRight, Star, Loader2 } from "lucide-react";
+import { Search, Package, AlertCircle, CheckCircle, Clock, ArrowLeft, ArrowRight, Star, Loader2, User } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 export default function TrackingPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -10,6 +11,7 @@ export default function TrackingPage() {
   const [showDetail, setShowDetail] = useState(false);
   const [rating, setRating] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(""); // <-- TAMBAHKAN INI
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -22,18 +24,34 @@ export default function TrackingPage() {
     setShowDetail(false);
 
     try {
+      // 1. Dapatkan data user yang sedang login saat ini
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user || !user.email) {
+        throw new Error("Sesi login tidak ditemukan");
+      }
+
+      // 2. Panggil data resi dari API
       const response = await fetch(`/api/tracking/${query}`);
       
       if (!response.ok) {
-        throw new Error("Data tidak ditemukan");
+        throw new Error("NOMOR RESI TIDAK DITEMUKAN"); // <-- Teks untuk resi ngawur
       }
 
       const data = await response.json();
+
+      // VALIDASI KEPEMILIKAN
+      if (data.email_pelanggan && data.email_pelanggan !== user.email) {
+        throw new Error("AKSES DITOLAK: RESI BUKAN MILIK ANDA"); // <-- Teks untuk resi orang lain
+      }
+
+      // Jika lolos validasi, tampilkan datanya
       setCurrentData(data);
       setStatus("success");
     } catch (error) {
       setCurrentData(null);
       setStatus("error");
+      setErrorMessage((error as Error).message);
     }
   };
 
@@ -88,6 +106,44 @@ export default function TrackingPage() {
                   ))}
                 </div>
               </div>
+              
+              {/* VVV --- KARTU PROFIL KURIR DINAMIS --- VVV */}
+              {/* Kita hanya tampilkan info kurir jika statusnya bukan "Menunggu Kurir" */}
+              {currentData.status !== "Menunggu Kurir" && (
+                <div className="space-y-4">
+                  <p className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Informasi Kurir</p>
+                  <div className="bg-[#F8FAF8] rounded-[24px] p-6 border border-green-100 flex items-center gap-5 shadow-sm">
+                    {/* Wajah Kurir (Preview) */}
+                    <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#4CAF50] bg-white flex items-center justify-center shrink-0">
+                      {currentData.kurir_avatar ? (
+                        <img src={currentData.kurir_avatar} alt={`Foto ${currentData.kurir_nama}`} className="w-full h-full object-cover" />
+                      ) : (
+                        // Fallback jika kurir belum upload foto
+                        <User size={28} className="text-[#4CAF50]" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-1">Pahlawan Paketmu</p>
+                      <h4 className="text-[16px] font-black text-gray-900 leading-none mb-2">{currentData.kurir_nama || "Kurir Nadebee"}</h4>
+                      
+                      {/* Data Plat Nomor & Telepon Dinamis */}
+                      <div className="flex gap-2">
+                        {currentData.kurir_plat && (
+                            <span className="bg-white border border-gray-200 text-gray-600 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
+                            {currentData.kurir_plat}
+                            </span>
+                        )}
+                        {currentData.kurir_telp && (
+                             <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded">
+                             {currentData.kurir_telp}
+                             </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* ^^^ ----------------------------------- ^^^ */}
 
               {currentData.status === "Selesai" && currentData.proof_image_url && (
                 <div className="space-y-4">
@@ -189,8 +245,14 @@ export default function TrackingPage() {
         {status === "error" && (
           <div className="bg-white rounded-[32px] p-1 border-2 border-red-400 shadow-xl shadow-red-100 animate-in zoom-in duration-300">
             <div className="bg-white rounded-[28px] border border-red-400 p-16 flex flex-col items-center text-center">
-              <div className="w-14 h-14 bg-red-500 text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-red-200"><AlertCircle size={32} strokeWidth={3} /></div>
-              <h3 className="text-red-500 font-black text-[18px] mb-2 uppercase tracking-wide">Nomor resi tidak ditemukan</h3>
+              <div className="w-14 h-14 bg-red-500 text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-red-200">
+                <AlertCircle size={32} strokeWidth={3} />
+              </div>
+              {/* VVV --- UBAH BAGIAN INI --- VVV */}
+              <h3 className="text-red-500 font-black text-[18px] mb-2 uppercase tracking-wide">
+                {errorMessage} 
+              </h3>
+              {/* ^^^ ----------------------- ^^^ */}
               <p className="text-gray-400 text-[15px] font-medium">Coba cek lagi ya!</p>
             </div>
           </div>

@@ -9,10 +9,12 @@ export async function GET(
     const resolvedParams = await params; 
     const resiNumber = resolvedParams.resi.toUpperCase();
 
-    // 1. Ambil data utama paket
+    // 1. REVISI: Ambil data utama paket SEKALIGUS join dengan data Kurir
+    // Kita menyuruh Supabase mengambil semua kolom (*) shipments 
+    // DAN semua kolom (*) dari tabel couriers yang terhubung
     const { data: shipment, error: shipmentError } = await supabase
       .from('shipments')
-      .select('*')
+      .select('*, couriers(*)') // <-- KUNCI PERUBAHANNYA DI SINI
       .eq('resi_number', resiNumber)
       .maybeSingle(); 
 
@@ -27,7 +29,6 @@ export async function GET(
       .eq('shipment_id', shipment.id)
       .order('created_at', { ascending: false }); 
 
-    // Cari url bukti gambar dari record terbaru yang memilikinya
     const detailWithProof = details?.find((d: any) => d.proof_image_url);
     const proofImageUrl = detailWithProof ? detailWithProof.proof_image_url : null;
 
@@ -62,6 +63,9 @@ export async function GET(
       }
     };
 
+    // Ekstrak data kurir dari hasil join Supabase
+    const dataKurir = shipment.couriers; // Hasil join biasanya dalam bentuk nested object
+
     const formattedData = {
       status: currentStatusTitle,
       pengirim: shipment.sender_name || "-",
@@ -70,7 +74,15 @@ export async function GET(
       ongkir: `Rp. ${shipment.shipping_cost?.toLocaleString('id-ID') || 0}`,
       color: getColorByStatus(currentStatusTitle),
       proof_image_url: proofImageUrl, 
-      history: history 
+      history: history,
+      email_pelanggan: shipment.customer_email,
+      
+      // VVV --- TAMBAHAN DATA KURIR UNTUK FRONTEND --- VVV
+      kurir_nama: dataKurir?.username, 
+      kurir_avatar: dataKurir?.avatar_url,
+      kurir_plat: dataKurir?.plat_nomor,
+      kurir_telp: dataKurir?.phone,
+      // ^^^ ---------------------------------------- ^^^
     };
 
     return NextResponse.json(formattedData);

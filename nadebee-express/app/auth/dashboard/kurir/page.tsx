@@ -1,12 +1,13 @@
 "use client"; 
 
 import { useState, useEffect } from "react";
-import { Wallet, Package, Truck, CheckCircle2, Calendar } from "lucide-react"; 
+import { Wallet, Package, Truck, CheckCircle2, Calendar, User } from "lucide-react"; // <-- TAMBAH USER
 import { supabase } from "@/lib/supabase"; 
 
 export default function KurirHome() {
   const [time, setTime] = useState<Date | null>(null);
   const [courierName, setCourierName] = useState<string>("Kurir");
+  const [courierAvatar, setCourierAvatar] = useState<string>(""); // <-- TAMBAHAN STATE AVATAR
   const [loadingName, setLoadingName] = useState<boolean>(true);
 
   // --- FILTER TANGGAL ---
@@ -52,14 +53,17 @@ export default function KurirHome() {
       try {
         setLoadingName(true);
         
-        // 1. Tarik Nama Kurir
+        // 1. Tarik Nama Kurir & Avatar
         const { data: courierData } = await supabase
           .from("couriers")
-          .select("username")
+          .select("username, avatar_url") // <-- REVISI: Ambil avatar_url juga
           .eq("id", savedCourierId)
           .single();
 
-        if (courierData) setCourierName(courierData.username);
+        if (courierData) {
+          setCourierName(courierData.username);
+          setCourierAvatar(courierData.avatar_url || ""); // <-- Set avatar
+        }
 
         // 2. Tarik Semua Pesanan (Shipments) Milik Kurir Ini & Filter berdasarkan Tanggal!
         const start = new Date(startDate);
@@ -74,7 +78,7 @@ export default function KurirHome() {
           .eq("courier_id", savedCourierId)
           .gte("created_at", start.toISOString())
           .lte("created_at", end.toISOString())
-          .order("created_at", { ascending: true }); // Mengurutkan dari terlama ke terbaru
+          .order("created_at", { ascending: true }); 
 
         if (error) throw error;
 
@@ -85,12 +89,10 @@ export default function KurirHome() {
           let proses = 0;
           let selesai = 0;
           
-          // Map untuk menampung pendapatan harian (Untuk Line Chart)
           const dailyRevenueMap = new Map<string, number>();
 
           shipmentsData.forEach((task: any) => {
             const status = task.status?.toLowerCase().trim() || "";
-            // Simpan format tanggal mentah (YYYY-MM-DD) sebagai kunci (key) di Map untuk kemudahan sorting
             const rawDate = new Date(task.created_at).toISOString().split('T')[0];
             
             if (status === "menunggu kurir") {
@@ -100,7 +102,6 @@ export default function KurirHome() {
               const cost = task.shipping_cost || 0;
               pendapatan += cost;
               
-              // Masukkan ke log harian
               const currentDaily = dailyRevenueMap.get(rawDate) || 0;
               dailyRevenueMap.set(rawDate, currentDaily + cost);
               
@@ -114,12 +115,11 @@ export default function KurirHome() {
           setProsesCount(proses);
           setSelesaiCount(selesai);
 
-          // Format map ke array, ubah tanggal mentah jadi format UI (Misal: 21 MEI), lalu sorting!
           const formattedLineData = Array.from(dailyRevenueMap, ([rawDate, amount]) => ({
             rawDate,
             amount,
             date: new Date(rawDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }).toUpperCase()
-          })).sort((a, b) => new Date(a.rawDate).getTime() - new Date(b.rawDate).getTime()); // Sorting Matematis
+          })).sort((a, b) => new Date(a.rawDate).getTime() - new Date(b.rawDate).getTime()); 
 
           setRevenueData(formattedLineData);
         }
@@ -144,7 +144,7 @@ export default function KurirHome() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [startDate, endDate]); // Effect akan dipanggil ulang jika filter tanggal berubah!
+  }, [startDate, endDate]); 
 
   const formattedDate = time
     ? time.toLocaleDateString("id-ID", {
@@ -163,27 +163,24 @@ export default function KurirHome() {
       }).replace(/:/g, ".") 
     : "";
 
-  // Logika Tinggi Bar Chart
   const maxBarValue = Math.max(menungguCount, prosesCount, selesaiCount, 1);
   const getChartHeight = (value: number) => {
     if (value === 0) return "5%";
     return `${(value / maxBarValue) * 100}%`;
   };
 
-  // Logika Pembuatan SVG Line Chart Murni
   const generateLineChartPath = () => {
     if (revenueData.length === 0) return "";
     
-    const maxAmt = Math.max(...revenueData.map(d => d.amount), 1); // Hindari / 0
-    const height = 150; // Tinggi total area SVG (padding atas bawah 25)
+    const maxAmt = Math.max(...revenueData.map(d => d.amount), 1); 
+    const height = 150; 
 
-    // JIKA HANYA ADA 1 DATA: Garis lurus dibuat tepat membelah titiknya
     if (revenueData.length === 1) {
       const y = 175 - ((revenueData[0].amount / maxAmt) * height);
       return `M 10 ${y} L 290 ${y}`; 
     }
 
-    const width = 280; // Lebar total area SVG (padding kiri kanan 10)
+    const width = 280; 
     const stepX = width / (revenueData.length - 1);
     
     const points = revenueData.map((d, index) => {
@@ -198,13 +195,23 @@ export default function KurirHome() {
   return (
     <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 px-4 md:px-0 pb-20">
       
-      {/* Header Salam & Jam */}
+      {/* --- REVISI: Header Salam & Foto Profil Kurir --- */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-0">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Halo!</h1>
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-1">
-            Selamat datang Kurir {loadingName ? <span className="text-gray-400 animate-pulse">...</span> : courierName} 👋
-          </h2>
+        <div className="flex items-center gap-4">
+          {/* Bulatan Avatar */}
+          <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#4CAF50] bg-green-50 flex items-center justify-center shrink-0 shadow-sm">
+            {courierAvatar ? (
+              <img src={courierAvatar} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <User size={24} className="text-[#4CAF50]" />
+            )}
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Halo!</h1>
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-1">
+              Selamat datang Kurir {loadingName ? <span className="text-gray-400 animate-pulse">...</span> : courierName} 👋
+            </h2>
+          </div>
         </div>
         <div className="text-left md:text-right">
           <p className="text-sm text-gray-500 mb-1">Hari ini</p>
@@ -213,7 +220,7 @@ export default function KurirHome() {
         </div>
       </div>
 
-      {/* --- REVISI: FILTER TANGGAL --- */}
+      {/* --- FILTER TANGGAL --- */}
       <div className="bg-white border border-gray-200 rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4 shadow-sm">
         <div className="flex items-center gap-2 text-gray-500 font-semibold mr-auto">
           <Calendar size={18} className="text-[#4CAF50]"/>
@@ -274,7 +281,7 @@ export default function KurirHome() {
         </div>
       </div>
 
-      {/* --- REVISI: DUA GRAFIK BERDAMPINGAN --- */}
+      {/* DUA GRAFIK BERDAMPINGAN */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         {/* BAR CHART: Status Pesanan */}
@@ -377,7 +384,6 @@ export default function KurirHome() {
               {/* Label Tanggal di Bawah Line Chart */}
               <div className="flex justify-between w-full mt-4 px-2">
                 {revenueData.map((d, i) => {
-                  // Jika datanya banyak (lebih dari 5), sembunyikan beberapa label agar tidak menumpuk
                   if (revenueData.length > 5 && i % Math.ceil(revenueData.length / 4) !== 0 && i !== revenueData.length - 1) return <span key={i}></span>;
                   return (
                     <span key={i} className="text-[10px] md:text-[11px] text-gray-500 font-bold uppercase whitespace-nowrap">
