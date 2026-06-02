@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase"; // <-- IMPORT SUPABASE DITAMBAHKAN
 import { 
   Home, 
   Search, 
@@ -17,7 +18,6 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   const pathname = usePathname();
   const router = useRouter();
   
-  // State untuk pop-up konfirmasi logout
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const menuItems = [
@@ -28,14 +28,23 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
     { name: "Profile", path: "/auth/dashboard/pelanggan/profile", icon: User },
   ];
 
-  const handleLogout = () => {
+  // --- FUNGSI LOGOUT YANG SUDAH DIPERKUAT ---
+  const handleLogout = async () => {
     setShowLogoutConfirm(false);
-    router.push("/"); // Redirect ke landing page
+    
+    // 1. Hancurkan karcis keamanan Middleware
+    document.cookie = "nadebee-auth-token=; path=/; max-age=0";
+    
+    // 2. Putus sesi resmi dari Supabase
+    await supabase.auth.signOut();
+    
+    // 3. Tendang kembali ke halaman utama
+    router.push("/"); 
   };
 
   return (
     <>
-      {/* 1. POP-UP LOGOUT (Style: Center, Satu Tombol "Ya") */}
+      {/* 1. POP-UP LOGOUT */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 w-screen h-screen flex items-center justify-center z-[999999]">
           <div 
@@ -62,7 +71,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         </div>
       )}
 
-      {/* 2. OVERLAY SIDEBAR (Tutup saat klik luar) */}
+      {/* 2. OVERLAY SIDEBAR */}
       <div 
         className={`fixed inset-0 bg-black/5 z-40 transition-opacity duration-300 ${
           isOpen ? "opacity-100 visible" : "opacity-0 invisible"
@@ -76,7 +85,6 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
       }`}>
         <div className="flex flex-col h-full">
           
-          {/* Header Brand */}
           <div className="pt-12 pb-8 px-8">
             <h2 className="text-[22px] font-black text-gray-900 tracking-tighter">
               Nadebee Express
@@ -86,7 +94,6 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
 
           <hr className="border-gray-50 mx-6 mb-4" />
 
-          {/* Navigasi Menu */}
           <nav className="flex-1 px-4 space-y-2 mt-2">
             {menuItems.map((item) => {
               const active = pathname === item.path;
@@ -95,7 +102,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
                 <Link 
                   key={item.path}
                   href={item.path}
-                  onClick={onClose} // Tutup sidebar saat menu diklik
+                  onClick={onClose} 
                   className={`flex items-center gap-4 px-6 py-4 rounded-[22px] transition-all duration-300 ${
                     active 
                       ? "bg-[#4CAF50] text-white shadow-md shadow-green-100 scale-[1.02]" 
@@ -114,7 +121,6 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
             })}
           </nav>
 
-          {/* Tombol Keluar di Bawah */}
           <div className="p-6 pb-10 border-t border-gray-50">
             <button 
               onClick={() => {

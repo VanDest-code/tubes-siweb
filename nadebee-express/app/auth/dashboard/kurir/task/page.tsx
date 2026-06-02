@@ -102,7 +102,11 @@ export default function TaskPage() {
     if (selectedTask) {
       const isTaskStillExist = allTasks.find((task) => task.id === selectedTask.id);
       
-      if (!isTaskStillExist) {
+      // Cek apakah kurir sedang berada di tahap penyelesaian
+      const isFinishingTask = currentStatus.toLowerCase().trim() === "selesai";
+      
+      // Alert HANYA muncul jika tugas hilang DAN kurir belum menekan tombol Selesai
+      if (!isTaskStillExist && !isFinishingTask) {
         alert(`🚨 Mohon maaf, pesanan ${selectedTask.id} baru saja dibatalkan oleh pelanggan.`);
         
         // Tutup semua pop-up dan paksa kurir kembali ke daftar utama
@@ -110,7 +114,7 @@ export default function TaskPage() {
         setSelectedTask(null);
       }
     }
-  }, [allTasks, selectedTask]);
+  }, [allTasks, selectedTask, currentStatus]);
 
   const waitingTasks = allTasks.filter(t => t.status.toLowerCase().trim() === "menunggu kurir");
   const activeTasks = allTasks.filter(t => t.status.toLowerCase().trim() !== "menunggu kurir");

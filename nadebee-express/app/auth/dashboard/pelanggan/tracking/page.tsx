@@ -1,58 +1,99 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Search, Package, AlertCircle, CheckCircle, Clock, ArrowLeft, ArrowRight, Star, Loader2, User } from "lucide-react";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Search, Package, AlertCircle, CheckCircle, Clock, ArrowLeft, ArrowRight, Loader2, User } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-export default function TrackingPage() {
+function TrackingContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [currentData, setCurrentData] = useState<any>(null); 
   const [showDetail, setShowDetail] = useState(false);
-  const [rating, setRating] = useState(0);
   const [mounted, setMounted] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(""); // <-- TAMBAHKAN INI
+  const [errorMessage, setErrorMessage] = useState("");
 
-  useEffect(() => { setMounted(true); }, []);
+  // --- FUNGSI STANDAR WARNA (DISELARASKAN DENGAN KURIR) ---
+  const getStatusStyle = (rawStatus: string) => {
+    const statusStr = (rawStatus || "").toLowerCase().trim();
+    switch (statusStr) {
+      case "menunggu kurir": return "bg-orange-50 text-orange-500 border-orange-200"; // <-- Berubah jadi Oranye!
+      case "kurir menuju lokasi": return "bg-orange-50 text-orange-500 border-orange-200"; // <-- Kuning agar beda dari menunggu
+      case "paket sudah diambil": return "bg-blue-50 text-blue-500 border-blue-200"; 
+      case "dalam perjalanan": return "bg-purple-50 text-purple-500 border-purple-200"; 
+      case "selesai": return "bg-green-50 text-green-500 border-green-200"; 
+      default: return "bg-gray-50 text-gray-400 border-gray-200";
+    }
+  };
+
+  const performSearch = async (query: string, autoShowDetail: boolean = false) => {
+    setStatus("loading");
+    if (!autoShowDetail) setShowDetail(false);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !user.email) {
+        throw new Error("Sesi login tidak ditemukan");
+      }
+
+      const response = await fetch(`/api/tracking/${query}`);
+      
+      if (!response.ok) {
+        throw new Error("NOMOR RESI TIDAK DITEMUKAN"); 
+      }
+
+      const data = await response.json();
+
+      if (data.email_pelanggan && data.email_pelanggan !== user.email) {
+        throw new Error("AKSES DITOLAK: RESI BUKAN MILIK ANDA"); 
+      }
+
+      setCurrentData(data);
+      setStatus("success");
+      
+      // Jika dipanggil saat refresh, langsung buka halaman detail
+      if (autoShowDetail) {
+        setShowDetail(true);
+      }
+    } catch (error) {
+      setCurrentData(null);
+      setStatus("error");
+      setErrorMessage((error as Error).message);
+    }
+  };
+
+  // --- DETEKSI REFRESH DARI URL ---
+  useEffect(() => { 
+    setMounted(true); 
+    const resiFromUrl = searchParams.get("resi");
+    if (resiFromUrl) {
+      setSearchQuery(resiFromUrl);
+      performSearch(resiFromUrl, true);
+    }
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const query = searchQuery.toUpperCase().trim();
     if (!query) return;
 
-    setStatus("loading");
+    // Bersihkan URL saat melakukan pencarian manual yang baru
+    router.replace('/auth/dashboard/pelanggan/tracking');
+    performSearch(query, false);
+  };
+
+  // --- NAVIGASI KLIK ---
+  const handleOpenDetail = () => {
+    setShowDetail(true);
+    router.push(`/auth/dashboard/pelanggan/tracking?resi=${searchQuery.toUpperCase()}`);
+  };
+
+  const handleBackToSearch = () => {
     setShowDetail(false);
-
-    try {
-      // 1. Dapatkan data user yang sedang login saat ini
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user || !user.email) {
-        throw new Error("Sesi login tidak ditemukan");
-      }
-
-      // 2. Panggil data resi dari API
-      const response = await fetch(`/api/tracking/${query}`);
-      
-      if (!response.ok) {
-        throw new Error("NOMOR RESI TIDAK DITEMUKAN"); // <-- Teks untuk resi ngawur
-      }
-
-      const data = await response.json();
-
-      // VALIDASI KEPEMILIKAN
-      if (data.email_pelanggan && data.email_pelanggan !== user.email) {
-        throw new Error("AKSES DITOLAK: RESI BUKAN MILIK ANDA"); // <-- Teks untuk resi orang lain
-      }
-
-      // Jika lolos validasi, tampilkan datanya
-      setCurrentData(data);
-      setStatus("success");
-    } catch (error) {
-      setCurrentData(null);
-      setStatus("error");
-      setErrorMessage((error as Error).message);
-    }
+    router.push('/auth/dashboard/pelanggan/tracking');
   };
 
   if (!mounted) return null;
@@ -62,7 +103,7 @@ export default function TrackingPage() {
     return (
       <main className="w-full flex flex-col items-center pt-6 pb-20 px-6 max-w-5xl mx-auto animate-in fade-in duration-500">
         <div className="w-full">
-          <button onClick={() => setShowDetail(false)} className="flex items-center gap-2 text-gray-400 hover:text-gray-600 mb-8 font-medium italic transition-all">
+          <button onClick={handleBackToSearch} className="flex items-center gap-2 text-gray-400 hover:text-gray-600 mb-8 font-medium italic transition-all">
             <ArrowLeft size={18} /> Kembali
           </button>
 
@@ -83,7 +124,7 @@ export default function TrackingPage() {
                   <p className="text-[15px] font-black text-green-600 tracking-tighter">{currentData.ongkir}</p>
                 </div>
               </div>
-              <span className={`px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest border ${currentData.color}`}>
+              <span className={`px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest border ${getStatusStyle(currentData.status)}`}>
                 {currentData.status}
               </span>
             </div>
@@ -108,7 +149,6 @@ export default function TrackingPage() {
               </div>
               
               {/* VVV --- KARTU PROFIL KURIR DINAMIS --- VVV */}
-              {/* Kita hanya tampilkan info kurir jika statusnya bukan "Menunggu Kurir" */}
               {currentData.status !== "Menunggu Kurir" && (
                 <div className="space-y-4">
                   <p className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Informasi Kurir</p>
@@ -118,7 +158,6 @@ export default function TrackingPage() {
                       {currentData.kurir_avatar ? (
                         <img src={currentData.kurir_avatar} alt={`Foto ${currentData.kurir_nama}`} className="w-full h-full object-cover" />
                       ) : (
-                        // Fallback jika kurir belum upload foto
                         <User size={28} className="text-[#4CAF50]" />
                       )}
                     </div>
@@ -126,7 +165,6 @@ export default function TrackingPage() {
                       <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-1">Pahlawan Paketmu</p>
                       <h4 className="text-[16px] font-black text-gray-900 leading-none mb-2">{currentData.kurir_nama || "Kurir Nadebee"}</h4>
                       
-                      {/* Data Plat Nomor & Telepon Dinamis */}
                       <div className="flex gap-2">
                         {currentData.kurir_plat && (
                             <span className="bg-white border border-gray-200 text-gray-600 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
@@ -155,23 +193,6 @@ export default function TrackingPage() {
               )}
             </div>
           </div>
-
-          {currentData.status === "Selesai" && (
-            <div className="mt-8 bg-white rounded-[32px] p-10 border border-gray-900/10 shadow-sm text-center">
-              <p className="text-[14px] font-black text-gray-900 mb-6">Paket sudah sampai! Yuk beri penilaian..</p>
-              <div className="flex justify-center gap-3 mb-8">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button key={star} onClick={() => setRating(star)} className={`transition-all ${rating >= star ? "text-yellow-400 scale-110" : "text-gray-200 hover:text-yellow-200"}`}>
-                    <Star size={32} fill={rating >= star ? "currentColor" : "none"} strokeWidth={2.5} />
-                  </button>
-                ))}
-              </div>
-              <textarea placeholder="Tulis ulasan (opsional)..." className="w-full bg-[#E8F5E9]/50 rounded-[24px] p-6 text-[14px] outline-none border border-transparent focus:border-green-200 mb-6 min-h-[120px] transition-all font-medium" />
-              <button className="w-full bg-[#4CAF50] text-white font-black py-5 rounded-[22px] shadow-lg shadow-green-100 hover:bg-green-600 active:scale-[0.98] transition-all">
-                Kirim Penilaian
-              </button>
-            </div>
-          )}
         </div>
       </main>
     );
@@ -209,14 +230,14 @@ export default function TrackingPage() {
 
         {status === "success" && currentData && (
           <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-            <div onClick={() => setShowDetail(true)} className="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm relative cursor-pointer group hover:border-green-100 transition-all">
+            <div onClick={handleOpenDetail} className="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm relative cursor-pointer group hover:border-green-100 transition-all">
               <div className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-900 group-hover:translate-x-1 transition-transform">
                 <ArrowRight size={24} strokeWidth={2.5} />
               </div>
               <div className="space-y-6">
                 <div className="flex items-center gap-6">
                   <h3 className="text-[15px] font-black text-gray-900 uppercase">{searchQuery.toUpperCase()}</h3>
-                  <span className={`px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${currentData.color}`}>
+                  <span className={`px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusStyle(currentData.status)}`}>
                     {currentData.status}
                   </span>
                 </div>
@@ -248,11 +269,9 @@ export default function TrackingPage() {
               <div className="w-14 h-14 bg-red-500 text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-red-200">
                 <AlertCircle size={32} strokeWidth={3} />
               </div>
-              {/* VVV --- UBAH BAGIAN INI --- VVV */}
               <h3 className="text-red-500 font-black text-[18px] mb-2 uppercase tracking-wide">
                 {errorMessage} 
               </h3>
-              {/* ^^^ ----------------------- ^^^ */}
               <p className="text-gray-400 text-[15px] font-medium">Coba cek lagi ya!</p>
             </div>
           </div>
@@ -266,5 +285,14 @@ export default function TrackingPage() {
         )}
       </div>
     </main>
+  );
+}
+
+// WAJIB: Bungkus dengan Suspense untuk menghindari error Next.js karena menggunakan useSearchParams
+export default function TrackingPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center pt-20"><Loader2 className="animate-spin text-[#4CAF50]" size={40} /></div>}>
+      <TrackingContent />
+    </Suspense>
   );
 }

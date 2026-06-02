@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase"; // <-- IMPORT SUPABASE DITAMBAHKAN
 import { Home, BookOpen, Clock, User, LogOut, HelpCircle } from "lucide-react";
 
 const SidebarKurir = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
@@ -17,14 +18,26 @@ const SidebarKurir = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
     { name: "Profile", href: "/auth/dashboard/kurir/profil", icon: User },
   ];
 
-  const handleLogout = () => {
+  // --- FUNGSI LOGOUT YANG SUDAH DIPERKUAT ---
+  const handleLogout = async () => {
     setShowLogoutConfirm(false);
+    
+    // 1. Hancurkan karcis keamanan Middleware
+    document.cookie = "nadebee-auth-token=; path=/; max-age=0";
+    
+    // 2. Bersihkan memori ID Kurir dari browser
+    sessionStorage.removeItem("loggedInCourierId");
+    
+    // 3. Putus sesi resmi dari Supabase
+    await supabase.auth.signOut();
+    
+    // 4. Tendang kembali ke halaman utama
     router.push("/");
   };
 
   return (
     <>
-      {/* 1. POP-UP LOGOUT (Tetap pakai blur dikit biar fokus) */}
+      {/* 1. POP-UP LOGOUT */}
       {showLogoutConfirm && (
         <div className="fixed top-0 left-0 w-screen h-screen flex items-center justify-center z-[999999]">
           <div 
@@ -48,7 +61,7 @@ const SidebarKurir = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
         </div>
       )}
 
-      {/* 2. OVERLAY SIDEBAR (DIUBAH: TIDAK BLUR) */}
+      {/* 2. OVERLAY SIDEBAR */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-black/5 z-[45] transition-opacity duration-300" 
@@ -62,7 +75,6 @@ const SidebarKurir = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Header Logo */}
         <div className="mb-10">
           <h1 className="text-xl font-bold text-gray-800">
             Nadebee <span className="text-green-600">Express</span>
@@ -70,7 +82,6 @@ const SidebarKurir = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
           <p className="text-sm text-gray-400 font-medium">Kurir</p>
         </div>
 
-        {/* Navigation Menu */}
         <nav className="flex-1 space-y-2">
           {menuItems.map((item) => {
             const isActive = pathname === item.href;
@@ -92,7 +103,6 @@ const SidebarKurir = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
           })}
         </nav>
 
-        {/* Footer / Logout */}
         <div className="pt-6 border-t border-gray-50">
           <button 
             onClick={() => {

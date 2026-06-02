@@ -51,6 +51,9 @@ export default function LoginPelanggan() {
       setLoading(false);
     } else {
       setErrors({});
+      // --- TIKET SAKTI UNTUK MELEWATI MIDDLEWARE ---
+      document.cookie = "nadebee-auth-token=true; path=/; max-age=86400";
+      // ----------------------------------------------
       setShowSuccess(true);
       setLoading(false);
     }

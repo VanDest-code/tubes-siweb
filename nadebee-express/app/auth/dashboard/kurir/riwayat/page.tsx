@@ -33,7 +33,6 @@ export default function RiwayatPage() {
         if (error) throw error;
 
         if (data) {
-          // OPSI B: Tampilkan semua paket yang berstatus "Selesai" (tidak perlu filter rating lagi)
           const formattedObject = data.map((item: any) => {
             const dateObj = new Date(item.created_at);
             const hasRating = item.rating && item.rating > 0;
@@ -41,13 +40,16 @@ export default function RiwayatPage() {
             return {
               id: item.resi_number,
               customer: item.sender_name,
+              // --- TAMBAHAN DATA UNTUK KEBUTUHAN SEARCH ---
+              receiver: item.receiver_name, 
+              itemCategory: item.item_category,
+              // -------------------------------------------
               status: item.status,
               price: `Rp ${item.shipping_cost?.toLocaleString('id-ID') || 0}`,
-              rating: item.rating || 0, // Jika belum ada rating, jadikan 0
+              rating: item.rating || 0, 
               route: `${item.sender_address} → ${item.receiver_address}`,
               duration: "Selesai", 
               date: dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-              // Jika belum ada rating, tampilkan teks menunggu ulasan
               review: hasRating ? (item.review || "Tidak ada ulasan tertulis") : "Menunggu ulasan pelanggan...",
             };
           });
@@ -63,7 +65,6 @@ export default function RiwayatPage() {
 
     fetchHistory();
     
-    // Tambahan Opsional: Pasang Radar Realtime agar saat pelanggan ngasih rating, layar kurir otomatis update!
     const channel = supabase
       .channel('kurir-history-realtime')
       .on(
@@ -76,16 +77,21 @@ export default function RiwayatPage() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // Filter & Search Logic
+  // --- LOGIKA FILTER YANG DIPERBAIKI (UNIVERSAL SEARCH) ---
   const filteredData = historyData.filter((item) => {
+    const query = searchQuery.toLowerCase().trim();
+    
+    // Menyapu bersih pencarian berdasarkan ID, Pengirim, Penerima, Barang, dan Status
     const matchesSearch =
-      item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.customer.toLowerCase().includes(searchQuery.toLowerCase());
+      item.id.toLowerCase().includes(query) ||
+      item.customer.toLowerCase().includes(query) ||
+      (item.receiver && item.receiver.toLowerCase().includes(query)) ||
+      (item.itemCategory && item.itemCategory.toLowerCase().includes(query)) ||
+      item.status.toLowerCase().includes(query);
 
-    // Fitur filter bintang juga kita sesuaikan
     const matchesRating =
       selectedRating === "Semua" ||
-      (selectedRating === "Belum Dinilai" && item.rating === 0) || // Tambahan filter belum dinilai
+      (selectedRating === "Belum Dinilai" && item.rating === 0) || 
       item.rating.toString() === selectedRating;
 
     return matchesSearch && matchesRating;
@@ -115,8 +121,8 @@ export default function RiwayatPage() {
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
         <input
           type="text"
-          placeholder="cari berdasarkan nomor resi atau nama"
-          className="w-full pl-12 pr-4 py-3 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 font-medium"
+          placeholder="Cari resi, nama pengirim, penerima, atau barang..." // <-- REVISI PLACEHOLDER
+          className="w-full pl-12 pr-4 py-3 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 font-medium transition-all"
           value={searchQuery}
           onChange={(e) => {
             setSearchQuery(e.target.value);
@@ -133,18 +139,18 @@ export default function RiwayatPage() {
           }`}
         >
           <Filter size={16} />
-          {selectedRating === "Semua" ? "Filter" : selectedRating === "Belum Dinilai" ? "Belum Dinilai" : `Rating ${selectedRating}`}
+          {selectedRating === "Semua" ? "Filter Rating" : selectedRating === "Belum Dinilai" ? "Belum Dinilai" : `Rating ${selectedRating}`}
         </button>
 
         {showFilter && (
-          <div className="absolute left-0 mt-2 w-[340px] bg-white border border-gray-300 rounded-2xl shadow-xl z-50 p-5">
+          <div className="absolute left-0 mt-2 w-[340px] bg-white border border-gray-300 rounded-2xl shadow-xl z-50 p-5 animate-in fade-in zoom-in-95 duration-200">
             <p className="text-sm font-black text-gray-700 mb-4">Rating</p>
             <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => { setSelectedRating("Semua"); setCurrentPage(1); setShowFilter(false); }} className={`py-2 rounded-full text-xs font-bold ${selectedRating === "Semua" ? "bg-[#F3D45F] text-gray-900" : "bg-gray-100 text-gray-500"}`}>Semua</button>
-              <button onClick={() => { setSelectedRating("Belum Dinilai"); setCurrentPage(1); setShowFilter(false); }} className={`py-2 rounded-full text-xs font-bold col-span-2 ${selectedRating === "Belum Dinilai" ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-500"}`}>Belum Dinilai</button>
+              <button onClick={() => { setSelectedRating("Semua"); setCurrentPage(1); setShowFilter(false); }} className={`py-2 rounded-full text-xs font-bold transition-all ${selectedRating === "Semua" ? "bg-[#F3D45F] text-gray-900" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>Semua</button>
+              <button onClick={() => { setSelectedRating("Belum Dinilai"); setCurrentPage(1); setShowFilter(false); }} className={`py-2 rounded-full text-xs font-bold col-span-2 transition-all ${selectedRating === "Belum Dinilai" ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>Belum Dinilai</button>
               
               {[1, 2, 3, 4, 5].map((num) => (
-                <button key={num} onClick={() => { setSelectedRating(num.toString()); setCurrentPage(1); setShowFilter(false); }} className={`flex items-center justify-center gap-1 py-2 rounded-full text-xs font-bold ${selectedRating === num.toString() ? "bg-[#F3D45F] text-gray-900" : "bg-gray-100 text-gray-500"}`}>
+                <button key={num} onClick={() => { setSelectedRating(num.toString()); setCurrentPage(1); setShowFilter(false); }} className={`flex items-center justify-center gap-1 py-2 rounded-full text-xs font-bold transition-all ${selectedRating === num.toString() ? "bg-[#F3D45F] text-gray-900" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
                   <Star size={12} fill={selectedRating === num.toString() ? "black" : "none"} />{num}
                 </button>
               ))}
@@ -153,7 +159,6 @@ export default function RiwayatPage() {
         )}
       </div>
 
-      {/* --- KUNCI PAGINATION DIAM: flex-col & justify-between & min-h --- */}
       <div className="flex flex-col justify-between min-h-[480px]">
         <div className="space-y-6">
           {loading ? (
@@ -161,7 +166,7 @@ export default function RiwayatPage() {
           ) : filteredData.length > 0 ? (
             <>
               {paginatedData.map((item, index) => (
-                <div key={index} className="bg-white border border-green-500 rounded-[24px] p-8 shadow-sm relative">
+                <div key={index} className="bg-white border border-green-500 rounded-[24px] p-8 shadow-sm relative hover:shadow-md transition-shadow">
                   <div className="flex flex-col md:flex-row justify-between items-start gap-6">
                     
                     <div className="space-y-4 flex-1">
@@ -188,9 +193,15 @@ export default function RiwayatPage() {
                         </div>
                       </div>
                       
-                      <p className={`text-sm font-medium italic p-3 rounded-xl border ${item.rating === 0 ? "text-orange-400 bg-orange-50 border-orange-100" : "text-gray-500 bg-gray-50 border-gray-100"}`}>
-                        {item.rating === 0 ? "⏳ " : `"`}{item.review}{item.rating === 0 ? "" : `"`}
-                      </p>
+                      {/* --- REVISI EMOTIKON JAM PASIR MENJADI ICON LUCIDE --- */}
+                      <div className={`flex items-start gap-2 p-3 rounded-xl border ${item.rating === 0 ? "text-orange-400 bg-orange-50 border-orange-100" : "text-gray-500 bg-gray-50 border-gray-100"}`}>
+                        {item.rating === 0 && <Clock size={16} className="shrink-0 mt-0.5" />}
+                        <p className="text-sm font-medium italic">
+                          {item.rating === 0 ? item.review : `"${item.review}"`}
+                        </p>
+                      </div>
+                      {/* ---------------------------------------------------- */}
+
                     </div>
 
                     <div className="text-left md:text-right space-y-4 shrink-0">
@@ -214,8 +225,8 @@ export default function RiwayatPage() {
             <div className="flex flex-col items-center justify-center py-20 bg-white border-2 border-dashed border-gray-200 rounded-[32px] space-y-4">
               <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300"><XCircle size={48} /></div>
               <div className="text-center">
-                <p className="text-gray-600 font-black text-xl">Belum Ada Riwayat</p>
-                <p className="text-gray-400 font-medium">Selesaikan pesanan untuk memunculkan riwayat di sini.</p>
+                <p className="text-gray-600 font-black text-xl">Tidak Ada Riwayat</p>
+                <p className="text-gray-400 font-medium">Data tidak ditemukan untuk kata kunci tersebut.</p>
               </div>
             </div>
           )}

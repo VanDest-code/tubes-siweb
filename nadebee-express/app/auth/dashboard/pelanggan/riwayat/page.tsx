@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Trash2 } from "lucide-react"; // Tambahan Ikon Tong Sampah
+import { Trash2, Search, Calendar, Package, ChevronRight, ChevronLeft } from "lucide-react"; // <-- ICON DITAMBAHKAN LENGKAP
 
 export default function RiwayatPickupPage() {
   const router = useRouter();
@@ -82,7 +82,7 @@ export default function RiwayatPickupPage() {
             status: d.status,
             rute: `${d.sender_name} → ${d.receiver_name}`,
             detail: `${d.destination_city} | ${d.item_category} | ${d.weight_range}`,
-            tanggal: d.created_at.split("T")[0] // Ambil YYYY-MM-DD
+            tanggal: d.created_at.split("T")[0] 
           }));
           setDataRiwayatAwal(formattedData);
         }
@@ -101,7 +101,7 @@ export default function RiwayatPickupPage() {
       .channel('live-update-riwayat')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'shipments' }, // Ubah ke '*' agar deteksi DELETE juga
+        { event: '*', schema: 'public', table: 'shipments' }, 
         () => { fetchRiwayat(); }
       )
       .subscribe();
@@ -109,15 +109,11 @@ export default function RiwayatPickupPage() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ==========================================
-  // FUNGSI HARD DELETE (MEMENUHI SYARAT CRUD)
-  // ==========================================
   const executeDelete = async () => {
     if (!resiToDelete) return;
     setIsDeleting(true);
 
     try {
-      // 1. Eksekusi Hapus Permanen di Supabase
       const { error } = await supabase
         .from('shipments')
         .delete()
@@ -125,10 +121,8 @@ export default function RiwayatPickupPage() {
 
       if (error) throw error;
 
-      // 2. Hapus langsung dari state lokal agar UI instan merespon
       setDataRiwayatAwal(prev => prev.filter(item => item.id !== resiToDelete));
       
-      // 3. Tampilkan Pop-up Sukses
       setShowDeleteConfirm(false);
       setShowDeleteSuccess(true);
       setResiToDelete(null);
@@ -141,16 +135,13 @@ export default function RiwayatPickupPage() {
     }
   };
 
-  // --- LOGIKA FILTER YANG DIPERBAIKI (KEBAL TYPO & PISAHKAN STATUS) ---
   const countAktif = dataRiwayatAwal.filter(i => {
     const s = (i.status || "").toLowerCase().trim();
-    // Yang aktif HANYA yang belum selesai, belum ditolak, dan belum dibatalkan
     return s !== "selesai" && s !== "ditolak" && s !== "dibatalkan";
   }).length;
 
   const countSelesai = dataRiwayatAwal.filter(i => {
     const s = (i.status || "").toLowerCase().trim();
-    // Masukkan yang sukses (selesai) dan yang gagal (ditolak/dibatalkan) ke tab Selesai
     return s === "selesai" || s === "ditolak" || s === "dibatalkan";
   }).length;
 
@@ -160,9 +151,15 @@ export default function RiwayatPickupPage() {
     const isHistory = dbStatus === "selesai" || dbStatus === "ditolak" || dbStatus === "dibatalkan";
     const matchTab = activeTab === "Aktif" ? !isHistory : isHistory;
     
-    const matchQuery = dbStatus.includes(searchQuery.toLowerCase().trim()) || 
-                       item.id.toLowerCase().includes(searchQuery.toLowerCase().trim());
-                       
+    // --- REVISI LOGIKA PENCARIAN (UNIVERSAL SEARCH) ---
+    // Kini mencari berdasarkan Resi, Status, Nama Pengirim, Nama Penerima, dan Nama Barang!
+    const query = searchQuery.toLowerCase().trim();
+    const matchQuery = 
+      dbStatus.includes(query) || 
+      item.id.toLowerCase().includes(query) ||
+      item.rute.toLowerCase().includes(query) || // Menyapu nama pengirim & penerima
+      item.detail.toLowerCase().includes(query); // Menyapu jenis barang & kota
+                        
     const matchDate = selectedDate ? item.tanggal === selectedDate : true;
     
     return matchTab && matchQuery && matchDate;
@@ -185,7 +182,6 @@ export default function RiwayatPickupPage() {
   return (
     <main className="min-h-screen bg-[#F4F9F4] font-sans pb-20">
       
-      {/* --- POP-UP KONFIRMASI DELETE --- */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)}></div>
@@ -215,7 +211,6 @@ export default function RiwayatPickupPage() {
         </div>
       )}
 
-      {/* --- POP-UP SUKSES DELETE --- */}
       {showDeleteSuccess && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/20 backdrop-blur-sm"></div>
@@ -241,16 +236,18 @@ export default function RiwayatPickupPage() {
 
         <div className="space-y-4 mb-6 relative">
           <div className="relative w-full">
-            <span className="absolute inset-y-0 left-4 flex items-center text-gray-400">🔍</span>
+            <span className="absolute inset-y-0 left-4 flex items-center text-gray-400">
+              <Search size={20} /> {/* <-- REVISI EMOTIKON */}
+            </span>
             <input
               type="text"
-              placeholder='Cari berdasarkan "status pickup" atau nomor resi'
+              placeholder='Cari resi, nama, atau barang...' // <-- REVISI PLACEHOLDER
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1); 
               }}
-              className="w-full bg-white border border-gray-300 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none"
+              className="w-full bg-white border border-gray-300 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-[#4CAF50] transition-colors"
             />
           </div>
 
@@ -260,15 +257,15 @@ export default function RiwayatPickupPage() {
               onClick={() => setIsCalendarOpen(!isCalendarOpen)}
               className="flex items-center gap-2 bg-white border border-gray-400 rounded-xl px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
             >
-              <span>⏳</span> {selectedDate ? `Tanggal: ${selectedDate}` : "Tanggal"}
+              <Calendar size={14} className="text-[#4CAF50]"/> {/* <-- REVISI EMOTIKON */}
+              {selectedDate ? `Tanggal: ${selectedDate}` : "Filter Tanggal"}
             </button>
 
             {isCalendarOpen && (
               <div className="absolute left-0 mt-2 bg-white border border-gray-200 rounded-[24px] p-5 shadow-xl z-50 w-[320px] animate-in fade-in zoom-in-95 duration-150">
                 
-                {/* Header Kalender Dinamis */}
                 <div className="flex justify-between items-center mb-4 px-1">
-                  <button type="button" onClick={handlePrevMonth} className="text-gray-600 font-bold hover:bg-gray-100 w-7 h-7 rounded-full text-sm">‹</button>
+                  <button type="button" onClick={handlePrevMonth} className="text-gray-600 hover:bg-gray-100 w-7 h-7 rounded-full flex items-center justify-center text-sm"><ChevronLeft size={18}/></button>
                   <div className="flex gap-2">
                     <select 
                       value={currentMonth}
@@ -287,14 +284,13 @@ export default function RiwayatPickupPage() {
                       ))}
                     </select>
                   </div>
-                  <button type="button" onClick={handleNextMonth} className="text-gray-600 font-bold hover:bg-gray-100 w-7 h-7 rounded-full text-sm">›</button>
+                  <button type="button" onClick={handleNextMonth} className="text-gray-600 hover:bg-gray-100 w-7 h-7 rounded-full flex items-center justify-center text-sm"><ChevronRight size={18}/></button>
                 </div>
 
                 <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-gray-400 mb-2">
                   <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
                 </div>
 
-                {/* Hari Dinamis */}
                 <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium">
                   {daysInMonth.map((day) => {
                     const monthStr = String(currentMonth + 1).padStart(2, "0");
@@ -364,20 +360,20 @@ export default function RiwayatPickupPage() {
                 return (
                   <div 
                     key={item.id}
-                    className="bg-white border border-black rounded-[30px] p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between hover:shadow-md transition-shadow cursor-pointer gap-6 md:gap-0"
+                    className="bg-white border border-gray-200 rounded-[30px] p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between hover:shadow-md hover:border-green-200 transition-all cursor-pointer gap-6 md:gap-0"
                     onClick={() => router.push(`/auth/dashboard/pelanggan/riwayat/detail-pengiriman?resi=${item.id}`)}
                   >
                     <div className="flex items-center gap-6">
                       <div className="flex flex-col justify-center">
                         <span className="font-bold text-lg mb-2">{item.id}</span>
                         <div className="bg-[#E8F5E9]/60 w-14 h-14 flex items-center justify-center rounded-xl border border-green-200 shadow-sm shrink-0">
-                          <span className="text-2xl">📦</span>
+                          <Package size={28} className="text-[#4CAF50]" /> {/* <-- REVISI EMOTIKON */}
                         </div>
                       </div>
 
                       <div className="pt-6 text-[15px]">
-                        <p className="text-gray-400">{item.rute}</p>
-                        <p className="text-gray-500 mt-1">{item.detail}</p>
+                        <p className="text-gray-600 font-medium">{item.rute}</p>
+                        <p className="text-gray-400 mt-1 text-[13px]">{item.detail}</p>
                       </div>
                     </div>
 
@@ -395,11 +391,10 @@ export default function RiwayatPickupPage() {
                         {item.status}
                       </span>
                       
-                      {/* --- TOMBOL BATALKAN (HANYA MUNCUL SAAT "MENUNGGU KURIR") --- */}
                       {isMenungguKurir && (
                         <button
                           onClick={(e) => {
-                            e.stopPropagation(); // Mencegah user terlempar ke halaman detail saat klik tombol batal
+                            e.stopPropagation(); 
                             setResiToDelete(item.id);
                             setShowDeleteConfirm(true);
                           }}
@@ -412,9 +407,9 @@ export default function RiwayatPickupPage() {
                       
                       <button
                         type="button"
-                        className="text-green-600 font-bold text-xl cursor-pointer hover:scale-110 transition-transform p-2 hidden md:block shrink-0"
+                        className="text-green-600 font-bold cursor-pointer hover:translate-x-1 transition-transform p-2 hidden md:block shrink-0"
                       >
-                        ➔
+                        <ChevronRight size={24} /> {/* <-- REVISI EMOTIKON */}
                       </button>
 
                     </div>
@@ -423,7 +418,7 @@ export default function RiwayatPickupPage() {
               })
             ) : (
               <div className="text-center py-12 text-gray-400 bg-white border border-dashed border-gray-300 rounded-[30px]">
-                Tidak ada data riwayat dengan filter ini.
+                Tidak ada data riwayat dengan pencarian ini.
               </div>
             )}
           </div>
