@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Edit2, Check, Lock, Trash2, Truck, Camera } from "lucide-react"; // <-- Tambah Camera
+import { User, Mail, Phone, Edit2, Check, Lock, Trash2, Truck, Camera } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
@@ -10,9 +10,8 @@ export default function ProfilKurirPage() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [uploading, setUploading] = useState(false); // <-- State untuk loading upload foto
+  const [uploading, setUploading] = useState(false);
 
-  // Data Kurir (Ditambah avatar_url)
   const [courierData, setCourierData] = useState({
     id: "",
     username: "",
@@ -20,8 +19,11 @@ export default function ProfilKurirPage() {
     phone: "",
     jenis_kendaraan: "",
     plat_nomor: "",
-    avatar_url: "", // <-- Tambahan kolom foto
+    avatar_url: "",
   });
+
+  // --- STATE ERROR UNTUK KURIR ---
+  const [profileErrors, setProfileErrors] = useState({ username: "", phone: "", plat_nomor: "" });
 
   const [stats, setStats] = useState({
     totalPengiriman: 0,
@@ -38,7 +40,6 @@ export default function ProfilKurirPage() {
       setLoading(true);
       const savedCourierId = sessionStorage.getItem("loggedInCourierId") || "a2c08fd2-ccc2-4271-8a7b-b74870c9dd60";
 
-      // 1. Tarik Data Profil Kurir
       const { data: profile, error: profileError } = await supabase
         .from("couriers")
         .select("*")
@@ -55,11 +56,10 @@ export default function ProfilKurirPage() {
           phone: profile.phone || "",
           jenis_kendaraan: profile.jenis_kendaraan || "-",
           plat_nomor: profile.plat_nomor || "-",
-          avatar_url: profile.avatar_url || "", // <-- Ambil link foto dari database
+          avatar_url: profile.avatar_url || "",
         });
       }
 
-      // 2. Tarik Data Pesanan untuk Statistik
       const { data: shipments, error: shipError } = await supabase
         .from("shipments")
         .select("status, rating")
@@ -105,15 +105,46 @@ export default function ProfilKurirPage() {
     }
   };
 
+  // --- VALIDASI KETAT KURIR ---
   const handleSaveProfile = async () => {
+    let tempErrors = { username: "", phone: "", plat_nomor: "" };
+    let isValid = true;
+
+    if (!courierData.username.trim()) {
+      tempErrors.username = "Username wajib diisi";
+      isValid = false;
+    } else if (courierData.username.trim().length < 3) {
+      tempErrors.username = "Username minimal 3 karakter";
+      isValid = false;
+    }
+
+    if (!courierData.phone.trim()) {
+      tempErrors.phone = "Nomor telepon wajib diisi";
+      isValid = false;
+    } else if (!courierData.phone.startsWith("08")) {
+      tempErrors.phone = "Nomor harus diawali dengan '08'";
+      isValid = false;
+    } else if (courierData.phone.length < 10 || courierData.phone.length > 13) {
+      tempErrors.phone = "Nomor telepon harus 10 - 13 digit";
+      isValid = false;
+    }
+
+    if (!courierData.plat_nomor.trim()) {
+      tempErrors.plat_nomor = "Plat nomor wajib diisi";
+      isValid = false;
+    }
+
+    setProfileErrors(tempErrors);
+    if (!isValid) return;
+
     try {
       setIsSaving(true);
       const { error } = await supabase
         .from("couriers")
         .update({
-          username: courierData.username,
+          username: courierData.username.trim(),
           phone: courierData.phone,
-          plat_nomor: courierData.plat_nomor, 
+          plat_nomor: courierData.plat_nomor.trim(), 
         })
         .eq("id", courierData.id);
 
@@ -128,7 +159,6 @@ export default function ProfilKurirPage() {
     }
   };
 
-  // --- LOGIKA UPLOAD FOTO KE SUPABASE STORAGE ---
   const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setUploading(true);
@@ -139,21 +169,18 @@ export default function ProfilKurirPage() {
 
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const fileName = `${courierData.id}-${Math.random()}.${fileExt}`; // Nama file unik
+      const fileName = `${courierData.id}-${Math.random()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      // 1. Unggah file ke bucket 'avatars'
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // 2. Dapatkan URL publik dari gambar yang baru diunggah
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const publicUrl = data.publicUrl;
 
-      // 3. Simpan URL tersebut ke tabel 'couriers'
       const { error: updateError } = await supabase
         .from('couriers')
         .update({ avatar_url: publicUrl })
@@ -161,7 +188,6 @@ export default function ProfilKurirPage() {
 
       if (updateError) throw updateError;
 
-      // 4. Perbarui tampilan di layar
       setCourierData({ ...courierData, avatar_url: publicUrl });
       alert("Foto profil berhasil diperbarui!");
       
@@ -172,7 +198,6 @@ export default function ProfilKurirPage() {
     }
   };
 
-  // --- LOGIKA HAPUS FOTO KURIR ---
   const handleDeleteAvatar = async () => {
     const isConfirmed = window.confirm("Yakin ingin menghapus foto profil?");
     if (!isConfirmed) return;
@@ -180,7 +205,6 @@ export default function ProfilKurirPage() {
     try {
       setUploading(true);
 
-      // 1. Ekstrak nama file dan hapus dari Storage
       if (courierData.avatar_url) {
         const fileName = courierData.avatar_url.split('/').pop();
         if (fileName) {
@@ -188,7 +212,6 @@ export default function ProfilKurirPage() {
         }
       }
 
-      // 2. Kosongkan URL di tabel couriers
       const { error: updateError } = await supabase
         .from('couriers')
         .update({ avatar_url: "" })
@@ -196,7 +219,6 @@ export default function ProfilKurirPage() {
 
       if (updateError) throw updateError;
 
-      // 3. Update UI kembali ke default
       setCourierData({ ...courierData, avatar_url: "" });
       alert("Foto profil berhasil dihapus!");
       
@@ -244,10 +266,8 @@ export default function ProfilKurirPage() {
       ) : (
         <div className="space-y-6">
           
-          {/* --- KARTU STATISTIK & FOTO PROFIL --- */}
           <div className="bg-white border border-green-400 rounded-[32px] p-8 shadow-sm flex flex-col items-center">
             
-            {/* VVV --- UI AVATAR UPLOAD --- VVV */}
             <div className="relative mb-4 group">
               <div className="w-28 h-28 border-4 border-green-500 rounded-full overflow-hidden flex items-center justify-center text-green-500 bg-green-50 relative">
                 {courierData.avatar_url ? (
@@ -256,7 +276,6 @@ export default function ProfilKurirPage() {
                   <User size={48} />
                 )}
                 
-                {/* Overlay loading */}
                 {uploading && (
                   <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
                     <span className="text-[10px] font-bold text-green-600 animate-pulse">Loading...</span>
@@ -264,7 +283,6 @@ export default function ProfilKurirPage() {
                 )}
               </div>
               
-              {/* VVV --- TOMBOL HAPUS (Kiri Bawah) --- VVV */}
               {courierData.avatar_url && (
                 <button
                   onClick={handleDeleteAvatar}
@@ -275,9 +293,7 @@ export default function ProfilKurirPage() {
                   <Trash2 size={16} />
                 </button>
               )}
-              {/* ^^^ ------------------------------------------------ ^^^ */}
 
-              {/* Tombol Kamera (Input File Tersembunyi - Kanan Bawah) */}
               <label 
                 htmlFor="avatar-upload" 
                 className={`absolute bottom-0 right-0 w-9 h-9 bg-green-500 rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-green-600 border-2 border-white shadow-md transition-all z-10 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
@@ -293,9 +309,11 @@ export default function ProfilKurirPage() {
                 disabled={uploading}
               />
             </div>
-            {/* ^^^ ------------------------ ^^^ */}
 
-            <h2 className="text-xl font-black text-gray-900 mb-8">{courierData.username}</h2>
+            {/* Proteksi layout pecah */}
+            <h2 className="text-xl font-black text-gray-900 mb-8 truncate max-w-[250px] md:max-w-[350px] px-4 text-center">
+              {courierData.username}
+            </h2>
 
             <div className="flex w-full justify-between px-4 md:px-12 text-center divide-x divide-gray-100">
               <div className="flex-1">
@@ -313,7 +331,6 @@ export default function ProfilKurirPage() {
             </div>
           </div>
 
-          {/* --- KARTU INFORMASI PRIBADI --- */}
           <div className="bg-white border border-green-400 rounded-[32px] p-8 md:p-10 shadow-sm relative">
             <div className="flex justify-between items-center mb-8">
               <h3 className="text-lg font-black text-gray-900">Informasi Pribadi</h3>
@@ -328,7 +345,6 @@ export default function ProfilKurirPage() {
 
             <div className="space-y-6">
               
-              {/* Username */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
                   <User size={16} /> Username
@@ -336,13 +352,23 @@ export default function ProfilKurirPage() {
                 <input
                   type="text"
                   value={courierData.username}
-                  onChange={(e) => setCourierData({...courierData, username: e.target.value})}
+                  // maxLength={30} <--- HAPUS BARIS INI
+                  onChange={(e) => {
+                    const cleanName = e.target.value.replace(/[^a-zA-Z0-9\s]/g, '');
+                    if (cleanName.length > 30) {
+                      setProfileErrors({...profileErrors, username: "Maksimal 30 karakter!"});
+                      setCourierData({...courierData, username: cleanName.slice(0, 30)});
+                    } else {
+                      setProfileErrors({...profileErrors, username: ""});
+                      setCourierData({...courierData, username: cleanName});
+                    }
+                  }}
                   disabled={!isEditing}
-                  className={`w-full p-4 rounded-xl text-sm font-medium border ${isEditing ? "bg-white border-green-400 focus:ring-2 focus:ring-green-100 outline-none text-black" : "bg-gray-50/50 border-gray-100 text-gray-500"}`}
+                  className={`w-full p-4 rounded-xl text-sm font-medium border outline-none transition-colors ${!isEditing ? "bg-gray-50/50 border-gray-100 text-gray-500" : profileErrors.username ? "bg-white border-red-300 text-black" : "bg-white border-green-400 focus:ring-2 focus:ring-green-100 text-black"}`}
                 />
+                {profileErrors.username && <p className="text-red-500 text-[11px] italic mt-1.5">{profileErrors.username}</p>}
               </div>
 
-              {/* Email */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
                   <Mail size={16} /> Email
@@ -358,7 +384,6 @@ export default function ProfilKurirPage() {
                 </div>
               </div>
 
-              {/* Nomor Telepon */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
                   <Phone size={16} /> Nomor Telepon
@@ -366,13 +391,23 @@ export default function ProfilKurirPage() {
                 <input
                   type="text"
                   value={courierData.phone}
-                  onChange={(e) => setCourierData({...courierData, phone: e.target.value})}
+                  // maxLength={13} <--- HAPUS BARIS INI
+                  onChange={(e) => {
+                    const onlyNums = e.target.value.replace(/[^0-9]/g, '');
+                    if (onlyNums.length > 13) {
+                      setProfileErrors({...profileErrors, phone: "Maksimal 13 digit angka!"});
+                      setCourierData({...courierData, phone: onlyNums.slice(0, 13)});
+                    } else {
+                      setProfileErrors({...profileErrors, phone: ""});
+                      setCourierData({...courierData, phone: onlyNums});
+                    }
+                  }}
                   disabled={!isEditing}
-                  className={`w-full p-4 rounded-xl text-sm font-medium border ${isEditing ? "bg-white border-green-400 focus:ring-2 focus:ring-green-100 outline-none text-black" : "bg-gray-50/50 border-gray-100 text-gray-500"}`}
+                  className={`w-full p-4 rounded-xl text-sm font-medium border outline-none transition-colors ${!isEditing ? "bg-gray-50/50 border-gray-100 text-gray-500" : profileErrors.phone ? "bg-white border-red-300 text-black" : "bg-white border-green-400 focus:ring-2 focus:ring-green-100 text-black"}`}
                 />
+                {profileErrors.phone && <p className="text-red-500 text-[11px] italic mt-1.5">{profileErrors.phone}</p>}
               </div>
 
-              {/* Jenis Kendaraan (Hanya Read) */}
               <div className="flex gap-4">
                  <div className="flex-1">
                     <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
@@ -389,7 +424,6 @@ export default function ProfilKurirPage() {
                     </div>
                  </div>
 
-                 {/* Plat Nomor (Bisa diedit) */}
                  <div className="flex-1">
                     <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
                        Plat Nomor
@@ -397,18 +431,28 @@ export default function ProfilKurirPage() {
                     <input
                       type="text"
                       value={courierData.plat_nomor}
-                      onChange={(e) => setCourierData({...courierData, plat_nomor: e.target.value})}
+                      // maxLength={11} <--- HAPUS BARIS INI
+                      onChange={(e) => {
+                        const cleanPlat = e.target.value.replace(/[^a-zA-Z0-9\s]/g, '').toUpperCase();
+                        if (cleanPlat.length > 11) {
+                          setProfileErrors({...profileErrors, plat_nomor: "Maksimal 11 karakter!"});
+                          setCourierData({...courierData, plat_nomor: cleanPlat.slice(0, 11)});
+                        } else {
+                          setProfileErrors({...profileErrors, plat_nomor: ""});
+                          setCourierData({...courierData, plat_nomor: cleanPlat});
+                        }
+                      }}
                       disabled={!isEditing}
-                      className={`w-full p-4 rounded-xl text-sm font-medium border ${isEditing ? "bg-white border-green-400 focus:ring-2 focus:ring-green-100 outline-none text-black uppercase" : "bg-gray-50/50 border-gray-100 text-gray-500 uppercase"}`}
+                      className={`w-full p-4 rounded-xl text-sm font-medium border outline-none transition-colors uppercase ${!isEditing ? "bg-gray-50/50 border-gray-100 text-gray-500" : profileErrors.plat_nomor ? "bg-white border-red-300 text-black" : "bg-white border-green-400 focus:ring-2 focus:ring-green-100 text-black"}`}
                       placeholder="Misal: AB 1234 CD"
                     />
+                    {profileErrors.plat_nomor && <p className="text-red-500 text-[11px] italic mt-1.5">{profileErrors.plat_nomor}</p>}
                  </div>
               </div>
 
             </div>
           </div>
 
-          {/* --- TOMBOL HAPUS AKUN (ZONA MERAH) --- */}
           <div className="mt-10 border-t border-red-100 pt-6">
             <h3 className="text-red-500 font-bold mb-2 flex items-center gap-2">
                <Trash2 size={20} /> Warning!

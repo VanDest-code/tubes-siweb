@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Sidebar from "@/components/layout/Sidebar";
-import { User, Phone, Mail, Edit3, CheckCircle2, Key, LogOut, Check, Camera, Trash2 } from "lucide-react"; // <-- Tambah Camera
+import { User, Phone, Mail, Edit3, CheckCircle2, Key, LogOut, Check, Camera, Trash2 } from "lucide-react";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -14,16 +14,17 @@ export default function ProfilePage() {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [uploading, setUploading] = useState(false); // <-- State loading upload
+  const [uploading, setUploading] = useState(false);
 
   const [formData, setFormData] = useState({
     username: "",
     phone: "",
     email: "",
-    avatar_url: "" // <-- Tambahan state avatar
+    avatar_url: ""
   });
   const [isEditMode, setIsEditMode] = useState(false);
 
+  const [profileErrors, setProfileErrors] = useState({ username: "", phone: "" });
   const [passwords, setPasswords] = useState({ old: "", new: "", confirm: "" });
   const [errors, setErrors] = useState({ old: "", new: "", confirm: "" });
 
@@ -39,7 +40,6 @@ export default function ProfilePage() {
 
         const userEmail = session.user.email ? session.user.email.toLowerCase().trim() : "";
 
-        // Tambahkan avatar_url ke dalam select query
         const { data, error: profileError } = await supabase
           .from("profiles")
           .select("full_name, phone_number, email, avatar_url") 
@@ -47,7 +47,6 @@ export default function ProfilePage() {
           .single();
 
         if (profileError) {
-          console.log("⚠️ Menggunakan data fallback dari session.");
           setFormData({
             username: session.user.user_metadata?.username || "Pelanggan Nadebee",
             phone: session.user.user_metadata?.phone || "",
@@ -62,7 +61,7 @@ export default function ProfilePage() {
             username: data.full_name || "",
             phone: data.phone_number || "",
             email: data.email || "",
-            avatar_url: data.avatar_url || "" // <-- Set data avatar dari database
+            avatar_url: data.avatar_url || "" 
           });
         }
       } catch (err) {
@@ -74,7 +73,42 @@ export default function ProfilePage() {
     getProfile();
   }, [router]);
 
+  // --- VALIDASI KETAT SEBELUM UPDATE PROFIL ---
   const handleUpdateProfile = async () => {
+    let tempErrors = { username: "", phone: "" };
+    let isValid = true;
+
+    // 1. Validasi Username Super Ketat
+    if (!formData.username.trim()) {
+      tempErrors.username = "Username wajib diisi";
+      isValid = false;
+    } else if (formData.username.trim().length < 3) {
+      tempErrors.username = "Username minimal 3 karakter";
+      isValid = false;
+    } else if (formData.username.length > 30) {
+      tempErrors.username = "Username maksimal 30 karakter";
+      isValid = false;
+    }
+
+    // 2. Validasi Nomor Telepon Indonesia (Maks 13 Digit, Awalan 08)
+    if (!formData.phone.trim()) {
+      tempErrors.phone = "Nomor telepon wajib diisi";
+      isValid = false;
+    } else if (!/^[0-9]+$/.test(formData.phone)) {
+      tempErrors.phone = "Nomor telepon hanya boleh berisi angka";
+      isValid = false;
+    } else if (!formData.phone.startsWith("08")) {
+      tempErrors.phone = "Nomor harus diawali dengan '08'";
+      isValid = false;
+    } else if (formData.phone.length < 10 || formData.phone.length > 13) {
+      tempErrors.phone = "Nomor telepon harus 10 - 13 digit";
+      isValid = false;
+    }
+
+    setProfileErrors(tempErrors);
+
+    if (!isValid) return;
+
     try {
       setIsSaving(true);
       const targetEmail = formData.email.toLowerCase().trim();
@@ -82,7 +116,7 @@ export default function ProfilePage() {
       const { data, error } = await supabase
         .from("profiles")
         .update({
-          full_name: formData.username, 
+          full_name: formData.username.trim(), // Buang spasi ekstra di awal/akhir
           phone_number: formData.phone, 
           user_type: "pelanggan"
         })
@@ -106,7 +140,6 @@ export default function ProfilePage() {
     }
   };
 
-  // --- LOGIKA UPLOAD FOTO PELANGGAN KE SUPABASE ---
   const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setUploading(true);
@@ -117,29 +150,25 @@ export default function ProfilePage() {
 
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const fileName = `pelanggan-${Math.random()}.${fileExt}`; // Nama file unik
+      const fileName = `pelanggan-${Math.random()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      // 1. Upload ke bucket
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // 2. Ambil public URL
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const publicUrl = data.publicUrl;
 
-      // 3. Simpan URL ke tabel profiles
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl })
-        .eq('email', formData.email.toLowerCase().trim()); // Update berdasarkan email pelanggan
+        .eq('email', formData.email.toLowerCase().trim()); 
 
       if (updateError) throw updateError;
 
-      // 4. Update UI
       setFormData({ ...formData, avatar_url: publicUrl });
       alert("Foto profil berhasil diperbarui!");
       
@@ -150,7 +179,6 @@ export default function ProfilePage() {
     }
   };
 
-  // --- LOGIKA HAPUS FOTO PELANGGAN ---
   const handleDeleteAvatar = async () => {
     const isConfirmed = window.confirm("Yakin ingin menghapus foto profil?");
     if (!isConfirmed) return;
@@ -158,8 +186,6 @@ export default function ProfilePage() {
     try {
       setUploading(true);
 
-      // 1. (Opsional tapi direkomendasikan) Ekstrak nama file dari URL untuk dihapus dari Storage
-      // Contoh URL: https://[project-id].supabase.co/storage/v1/object/public/avatars/pelanggan-123.png
       if (formData.avatar_url) {
         const fileName = formData.avatar_url.split('/').pop();
         if (fileName) {
@@ -167,7 +193,6 @@ export default function ProfilePage() {
         }
       }
 
-      // 2. Kosongkan kolom avatar_url di tabel profiles
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: "" })
@@ -175,7 +200,6 @@ export default function ProfilePage() {
 
       if (updateError) throw updateError;
 
-      // 3. Update UI kembali ke default
       setFormData({ ...formData, avatar_url: "" });
       alert("Foto profil berhasil dihapus!");
       
@@ -253,8 +277,7 @@ export default function ProfilePage() {
           <p className="text-sm text-gray-500 font-medium mt-1">Kelola informasi akunmu</p>
         </div>
 
-        {/* --- UI FOTO PROFIL PELANGGAN --- */}
-        <div className="flex flex-col items-center mb-8">
+        <div className="flex flex-col items-center mb-8 w-full">
           <div className="relative mb-4 group">
             <div className="w-24 h-24 border-4 border-[#4CAF50] rounded-full overflow-hidden flex items-center justify-center text-[#4CAF50] bg-green-50 relative shadow-sm">
               {formData.avatar_url ? (
@@ -263,7 +286,6 @@ export default function ProfilePage() {
                 <User size={40} />
               )}
               
-              {/* Overlay loading */}
               {uploading && (
                 <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
                   <span className="text-[10px] font-bold text-green-600 animate-pulse">Loading...</span>
@@ -271,7 +293,6 @@ export default function ProfilePage() {
               )}
             </div>
             
-            {/* VVV --- TOMBOL HAPUS (Kiri Bawah) --- VVV */}
             {formData.avatar_url && (
               <button
                 onClick={handleDeleteAvatar}
@@ -282,9 +303,7 @@ export default function ProfilePage() {
                 <Trash2 size={14} />
               </button>
             )}
-            {/* ^^^ ------------------------------------------------ ^^^ */}
 
-            {/* Tombol Kamera (Input File Tersembunyi - Kanan Bawah) */}
             <label 
               htmlFor="avatar-upload-pelanggan" 
               className={`absolute bottom-0 right-0 w-8 h-8 bg-[#4CAF50] rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-green-600 border-2 border-white shadow-md transition-all z-10 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
@@ -300,10 +319,13 @@ export default function ProfilePage() {
               disabled={uploading}
             />
           </div>
-          <h2 className="text-xl font-black text-gray-900">{formData.username || "Pelanggan"}</h2>
+          
+          {/* --- PROTEKSI LAYOUT PECAH --- */}
+          <h2 className="text-xl font-black text-gray-900 truncate max-w-[280px] md:max-w-[320px] px-4 text-center">
+            {formData.username || "Pelanggan"}
+          </h2>
           <p className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-wider">Akun Terverifikasi</p>
         </div>
-        {/* --------------------------------- */}
 
         <div className="w-full bg-white border border-gray-200 rounded-[32px] p-8 shadow-sm mb-6 relative">
           <div className="flex justify-between items-center mb-8">
@@ -324,10 +346,17 @@ export default function ProfilePage() {
               </label>
               <input 
                 value={formData.username}
-                onChange={(e) => setFormData({...formData, username: e.target.value})}
+                maxLength={30} // <-- Batasan maksimal karakter Username
+                onChange={(e) => {
+                  // --- TRIK DEWA 2: Hanya izinkan huruf, angka, dan spasi ---
+                  const cleanName = e.target.value.replace(/[^a-zA-Z0-9\s]/g, '');
+                  setFormData({...formData, username: cleanName});
+                  setProfileErrors({...profileErrors, username: ""});
+                }}
                 disabled={!isEditMode}
-                className={`w-full p-4 rounded-xl text-sm font-medium border transition-colors ${isEditMode ? "bg-white border-[#4CAF50] focus:ring-2 focus:ring-green-100 outline-none text-black" : "bg-gray-50/50 border-gray-100 text-gray-500"}`}
+                className={`w-full p-4 rounded-xl text-sm font-medium border transition-colors outline-none ${!isEditMode ? "bg-gray-50/50 border-gray-100 text-gray-500" : profileErrors.username ? "bg-white border-red-300 text-black" : "bg-white border-[#4CAF50] focus:ring-2 focus:ring-green-100 text-black"}`}
               />
+              {profileErrors.username && <p className="text-red-500 text-[11px] italic mt-1.5">{profileErrors.username}</p>}
             </div>
             <div>
               <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
@@ -335,10 +364,16 @@ export default function ProfilePage() {
               </label>
               <input 
                 value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                maxLength={13} // <-- Batasan maksimal 13 angka
+                onChange={(e) => {
+                  const onlyNums = e.target.value.replace(/[^0-9]/g, '');
+                  setFormData({...formData, phone: onlyNums});
+                  setProfileErrors({...profileErrors, phone: ""});
+                }}
                 disabled={!isEditMode}
-                className={`w-full p-4 rounded-xl text-sm font-medium border transition-colors ${isEditMode ? "bg-white border-[#4CAF50] focus:ring-2 focus:ring-green-100 outline-none text-black" : "bg-gray-50/50 border-gray-100 text-gray-500"}`}
+                className={`w-full p-4 rounded-xl text-sm font-medium border transition-colors outline-none ${!isEditMode ? "bg-gray-50/50 border-gray-100 text-gray-500" : profileErrors.phone ? "bg-white border-red-300 text-black" : "bg-white border-[#4CAF50] focus:ring-2 focus:ring-green-100 text-black"}`}
               />
+              {profileErrors.phone && <p className="text-red-500 text-[11px] italic mt-1.5">{profileErrors.phone}</p>}
             </div>
             <div>
               <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
@@ -379,7 +414,7 @@ export default function ProfilePage() {
                   className={`w-full p-4 rounded-xl text-sm font-medium border outline-none ${errors.old ? 'border-red-300' : 'border-gray-200 focus:border-[#4CAF50]'}`}
                   value={passwords.old} onChange={(e) => {setPasswords({...passwords, old: e.target.value}); setErrors({...errors, old: ""});}}
                 />
-                {errors.old && <p className="text-red-500 text-[11px] font-bold mt-1.5">{errors.old}</p>}
+                {errors.old && <p className="text-red-500 text-[11px] italic mt-1.5">{errors.old}</p>}
               </div>
               <div>
                 <label className="text-sm font-bold text-gray-700 mb-2 block">Password Baru</label>
@@ -388,7 +423,7 @@ export default function ProfilePage() {
                   className={`w-full p-4 rounded-xl text-sm font-medium border outline-none ${errors.new ? 'border-red-300' : 'border-gray-200 focus:border-[#4CAF50]'}`}
                   value={passwords.new} onChange={(e) => {setPasswords({...passwords, new: e.target.value}); setErrors({...errors, new: ""});}}
                 />
-                {errors.new && <p className="text-red-500 text-[11px] font-bold mt-1.5">{errors.new}</p>}
+                {errors.new && <p className="text-red-500 text-[11px] italic mt-1.5">{errors.new}</p>}
               </div>
               <div>
                 <label className="text-sm font-bold text-gray-700 mb-2 block">Konfirmasi Password Baru</label>
@@ -397,7 +432,7 @@ export default function ProfilePage() {
                   className={`w-full p-4 rounded-xl text-sm font-medium border outline-none ${errors.confirm ? 'border-red-300' : 'border-gray-200 focus:border-[#4CAF50]'}`}
                   value={passwords.confirm} onChange={(e) => {setPasswords({...passwords, confirm: e.target.value}); setErrors({...errors, confirm: ""});}}
                 />
-                {errors.confirm && <p className="text-red-500 text-[11px] font-bold mt-1.5">{errors.confirm}</p>}
+                {errors.confirm && <p className="text-red-500 text-[11px] italic mt-1.5">{errors.confirm}</p>}
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowPasswordForm(false)} className="flex-1 bg-white border border-gray-200 text-gray-600 font-bold py-4 rounded-xl hover:bg-gray-50">Batal</button>
