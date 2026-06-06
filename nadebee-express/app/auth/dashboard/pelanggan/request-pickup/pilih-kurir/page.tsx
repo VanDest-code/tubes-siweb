@@ -56,6 +56,8 @@ export default function PilihKurir() {
       setError("Kurir wajib dipilih"); 
       return;
     }
+    sessionStorage.setItem("selectedCourierId", selectedCourier);
+    
     setError("");
     router.push(`/auth/dashboard/pelanggan/request-pickup/konfirmasi?courier_id=${selectedCourier}`);
   };

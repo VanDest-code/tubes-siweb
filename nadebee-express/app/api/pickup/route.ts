@@ -1,21 +1,29 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
+
+const supabase = createRouteHandlerClient({ cookies });
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    
-    // 1. Cari nomor resi terakhir di tabel shipments
-    const { data: lastShipment, error: fetchError } = await supabase
+
+    // 1. Ambil user aktif langsung dari instance supabase
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user || !user.email) {
+      return NextResponse.json({ error: "Sesi tidak ditemukan" }, { status: 401 });
+    }
+
+    // 2. Cari nomor resi terakhir
+    const { data: lastShipment } = await supabase
       .from("shipments")
       .select("resi_number")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (fetchError) throw fetchError;
-
-    // 2. Logika Auto-Increment Resi (NDB010 -> NDB011)
     let newResiNumber = "NDB001"; 
     if (lastShipment && lastShipment.resi_number) {
       const lastNumber = parseInt(lastShipment.resi_number.replace("NDB", ""));
@@ -24,13 +32,13 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Masukkan data utama ke tabel shipments menggunakan biaya dinamis dari frontend
+    // 3. Masukkan data ke shipments
     const { data: insertedShipment, error: insertError } = await supabase
       .from("shipments")
       .insert([
         {
           resi_number: newResiNumber,
-          customer_email: body.customerEmail || "natalie@gmail.com", 
+          customer_email: user.email, 
           sender_name: body.senderName,
           sender_phone: body.senderPhone,
           sender_address: body.senderAddress,
@@ -44,7 +52,7 @@ export async function POST(request: Request) {
           shipping_cost: body.shippingCost, 
           jenis_kendaraan: body.vehicleType, 
           courier_id: body.courier_id,       
-          payment_method: body.payment_method, // <--- BARIS TERBARU: Menyimpan Metode Pembayaran ke DB!
+          payment_method: body.payment_method,
           status: "Menunggu Kurir",
           note: body.note || null
         }
@@ -54,19 +62,11 @@ export async function POST(request: Request) {
 
     if (insertError) throw insertError;
 
-    // 4. Masukkan baris pertama ke tabel riwayat (shipment_details)
-    const { error: detailError } = await supabase
-      .from("shipment_details")
-      .insert([
-        {
-          shipment_id: insertedShipment.id,
-          status: "Menunggu Kurir",
-        }
-      ]);
+    // 4. Masukkan ke shipment_details
+    await supabase.from("shipment_details").insert([
+      { shipment_id: insertedShipment.id, status: "Menunggu Kurir" }
+    ]);
 
-    if (detailError) throw detailError;
-
-    // 5. Kembalikan nomor resi baru ke Frontend
     return NextResponse.json({ success: true, resi: insertedShipment.resi_number });
 
   } catch (error: any) {

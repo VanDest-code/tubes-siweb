@@ -38,7 +38,8 @@ function TrackingContent() {
         throw new Error("Sesi login tidak ditemukan");
       }
 
-      const response = await fetch(`/api/tracking/${query}`);
+      // --- PERBAIKAN POIN 5: NONAKTIFKAN CACHE BROWSER ---
+      const response = await fetch(`/api/tracking/${query}`, { cache: "no-store" });
       
       if (!response.ok) {
         throw new Error("NOMOR RESI TIDAK DITEMUKAN"); 
@@ -46,9 +47,19 @@ function TrackingContent() {
 
       const data = await response.json();
 
-      if (data.email_pelanggan && data.email_pelanggan !== user.email) {
+      // --- PERBAIKAN BUG EMAIL (ANTI TYPO & SPASI GAIB) ---
+      const emailDatabase = data.email_pelanggan ? data.email_pelanggan.toLowerCase().trim() : "";
+      const emailLogin = user.email ? user.email.toLowerCase().trim() : "";
+
+      // Debugging: Tekan F12 di browser untuk melihat jika masih error
+      console.log("=== DEBUG KEAMANAN RESI ===");
+      console.log("Email Pemilik Resi (Database) :", emailDatabase);
+      console.log("Email Sedang Login (Browser)  :", emailLogin);
+
+      if (emailDatabase && emailDatabase !== emailLogin) {
         throw new Error("AKSES DITOLAK: RESI BUKAN MILIK ANDA"); 
       }
+      // ----------------------------------------------------
 
       setCurrentData(data);
       setStatus("success");
@@ -76,7 +87,6 @@ function TrackingContent() {
     e.preventDefault();
     const query = searchQuery.toUpperCase().trim();
     
-    // --- PERBAIKAN POIN 2: ERROR JIKA SEARCH KOSONG ---
     if (!query) {
       setStatus("error");
       setErrorMessage("NOMOR RESI WAJIB DIISI");
@@ -199,7 +209,6 @@ function TrackingContent() {
     <main className="w-full flex flex-col items-center pt-10 pb-20 px-6 max-w-5xl mx-auto">
       <div className="w-full">
         <div className="mb-8">
-          {/* --- PERBAIKAN POIN 7: HAPUS EMOJI, GANTI DENGAN IKON LUCIDE --- */}
           <h2 className="text-[22px] font-black text-gray-900 flex items-center gap-2 tracking-tight">
             Lacak Paket <Package size={24} className="text-[#4CAF50] ml-1" />
           </h2>

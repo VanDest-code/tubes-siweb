@@ -20,6 +20,7 @@ export default function RequestPickupPage() {
 
   useEffect(() => {
     const fetchInitialData = async () => {
+      sessionStorage.removeItem("pickupData");
       const savedDraft = sessionStorage.getItem("pickupDraft");
       
       if (savedDraft) {

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase"; // <-- IMPORT SUPABASE DITAMBAHKAN
+import { supabase } from "@/lib/supabase";
 import { 
   Home, 
   Search, 
@@ -11,15 +11,15 @@ import {
   History, 
   User, 
   LogOut, 
-  HelpCircle 
+  HelpCircle,
+  AlertCircle,
+  CheckCircle2
 } from "lucide-react";
 
 export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-
   const menuItems = [
     { name: "Home", path: "/auth/dashboard/pelanggan", icon: Home },
     { name: "Tracking", path: "/auth/dashboard/pelanggan/tracking", icon: Search },
@@ -28,10 +28,22 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
     { name: "Profile", path: "/auth/dashboard/pelanggan/profile", icon: User },
   ];
 
-  // --- FUNGSI LOGOUT YANG SUDAH DIPERKUAT ---
-  const handleLogout = async () => {
-    setShowLogoutConfirm(false);
-    
+  // --- CUSTOM DIALOG STATE ---
+  const [dialog, setDialog] = useState<{
+    isOpen: boolean; type: "success" | "error" | "confirm"; title: string; message: string; onConfirm: (() => void) | null;
+  }>({ isOpen: false, type: "success", title: "", message: "", onConfirm: null });
+
+  const showDialog = (type: "success" | "error" | "confirm", title: string, message: string, onConfirm: (() => void) | null = null) => {
+    setDialog({ isOpen: true, type, title, message, onConfirm });
+  };
+
+  // --- LOGIKA KONFIRMASI LOGOUT ---
+  const confirmLogout = () => {
+    onClose(); // Tutup sidebar terlebih dahulu
+    showDialog("confirm", "Keluar Akun", "Apakah Anda yakin ingin keluar dari aplikasi?", executeLogout);
+  };
+
+  const executeLogout = async () => {
     // 1. Hancurkan karcis keamanan Middleware
     document.cookie = "nadebee-auth-token=; path=/; max-age=0";
     
@@ -44,34 +56,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
 
   return (
     <>
-      {/* 1. POP-UP LOGOUT */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 w-screen h-screen flex items-center justify-center z-[999999]">
-          <div 
-            className="absolute inset-0 bg-black/10 backdrop-blur-sm w-full h-full"
-            onClick={() => setShowLogoutConfirm(false)}
-          ></div>
-          
-          <div className="bg-white rounded-[32px] p-10 max-w-sm w-[90%] text-center relative z-[1000000] shadow-2xl animate-in zoom-in duration-300">
-            <div className="w-16 h-16 border-2 border-green-500 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <HelpCircle size={32} strokeWidth={2.5} />
-            </div>
-            
-            <h2 className="text-sm font-black text-gray-900 mb-8">
-              Yakin untuk keluar?
-            </h2>
-            
-            <button 
-              onClick={handleLogout}
-              className="w-full bg-[#4CAF50] text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-all shadow-md active:scale-95"
-            >
-              Ya
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 2. OVERLAY SIDEBAR */}
+      {/* 1. OVERLAY SIDEBAR */}
       <div 
         className={`fixed inset-0 bg-black/5 z-40 transition-opacity duration-300 ${
           isOpen ? "opacity-100 visible" : "opacity-0 invisible"
@@ -79,7 +64,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         onClick={onClose} 
       />
       
-      {/* 3. SIDEBAR MAIN CONTAINER */}
+      {/* 2. SIDEBAR MAIN CONTAINER */}
       <aside className={`fixed left-0 top-0 h-full w-[280px] bg-white border-r border-gray-100 z-50 transition-transform duration-500 ease-in-out ${
         isOpen ? "translate-x-0" : "-translate-x-full"
       }`}>
@@ -89,7 +74,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
             <h2 className="text-[22px] font-black text-gray-900 tracking-tighter">
               Nadebee Express
             </h2>
-            <p className="text-[12px] text-gray-400 font-medium mt-1">Kirim cepat, hati senang! 🐝</p>
+            <p className="text-[12px] text-gray-400 font-medium mt-1">Layanan pickup wilayah Yogyakarta.</p>
           </div>
 
           <hr className="border-gray-50 mx-6 mb-4" />
@@ -123,10 +108,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
 
           <div className="p-6 pb-10 border-t border-gray-50">
             <button 
-              onClick={() => {
-                setShowLogoutConfirm(true);
-                onClose(); 
-              }}
+              onClick={confirmLogout}
               className="flex items-center gap-4 px-6 py-4 w-full text-red-500 font-black hover:bg-red-50 rounded-[22px] transition-all group"
             >
               <LogOut size={22} strokeWidth={2.5} className="group-hover:-translate-x-1 transition-transform" />
@@ -135,6 +117,31 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
           </div>
         </div>
       </aside>
+
+      {/* 3. RENDER CUSTOM DIALOG (Sama persis dengan ProfilePage) */}
+      {dialog.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-6">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDialog({...dialog, isOpen: false})}></div>
+          <div className="bg-white border border-gray-100 rounded-[32px] w-full max-w-sm p-8 relative z-10 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 ${dialog.type === 'error' ? 'bg-red-50 text-red-500' : dialog.type === 'confirm' ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-[#4CAF50]'}`}>
+              {dialog.type === 'error' ? <AlertCircle size={40} /> : dialog.type === 'confirm' ? <HelpCircle size={40} /> : <CheckCircle2 size={40} />}
+            </div>
+            <h3 className="text-xl font-black text-gray-900 mb-2">{dialog.title}</h3>
+            <p className="text-sm text-gray-500 mb-8">{dialog.message}</p>
+            
+            {dialog.type === 'confirm' ? (
+              <div className="flex gap-3 w-full">
+                <button onClick={() => setDialog({...dialog, isOpen: false})} className="flex-1 bg-gray-100 text-gray-600 font-bold py-3.5 rounded-xl hover:bg-gray-200 transition-colors">Batal</button>
+                <button onClick={() => { setDialog({...dialog, isOpen: false}); dialog.onConfirm?.(); }} className="flex-1 bg-red-500 text-white font-bold py-3.5 rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-100">Ya, Lanjutkan</button>
+              </div>
+            ) : (
+              <button onClick={() => { setDialog({...dialog, isOpen: false}); dialog.onConfirm?.(); }} className="w-full bg-[#4CAF50] text-white font-bold py-4 rounded-xl hover:bg-green-600 shadow-lg shadow-green-100 transition-colors">
+                Oke Mengerti
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

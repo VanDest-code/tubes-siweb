@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic"; // <-- TRIK DEWA 1: Mematikan cache Next.js agar data selalu fresh!
+export const revalidate = 0; // <-- TRIK DEWA 2: Memastikan tidak ada delay sinkronisasi
+
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase"; 
 
@@ -9,12 +12,9 @@ export async function GET(
     const resolvedParams = await params; 
     const resiNumber = resolvedParams.resi.toUpperCase();
 
-    // 1. REVISI: Ambil data utama paket SEKALIGUS join dengan data Kurir
-    // Kita menyuruh Supabase mengambil semua kolom (*) shipments 
-    // DAN semua kolom (*) dari tabel couriers yang terhubung
     const { data: shipment, error: shipmentError } = await supabase
       .from('shipments')
-      .select('*, couriers(*)') // <-- KUNCI PERUBAHANNYA DI SINI
+      .select('*, couriers(*)') 
       .eq('resi_number', resiNumber)
       .maybeSingle(); 
 
@@ -22,7 +22,6 @@ export async function GET(
       return NextResponse.json({ error: "Resi tidak ditemukan" }, { status: 404 });
     }
 
-    // 2. Ambil riwayat detail untuk mendapatkan gambar bukti pengiriman (jika ada)
     const { data: details } = await supabase
       .from('shipment_details')
       .select('*')
@@ -32,7 +31,6 @@ export async function GET(
     const detailWithProof = details?.find((d: any) => d.proof_image_url);
     const proofImageUrl = detailWithProof ? detailWithProof.proof_image_url : null;
 
-    // --- LOGIKA TIMELINE VISUAL (Tanpa Jam) ---
     const STANDARD_STATUSES = [
       { title: "Menunggu Kurir", desc: "Permintaan Pickup sudah masuk, menunggu konfirmasi kurir" },
       { title: "Kurir Menuju Lokasi", desc: "Kurir sedang dalam perjalanan ke alamat penjemputan" },
@@ -59,12 +57,11 @@ export async function GET(
         case "Dalam Perjalanan": return "bg-orange-100 text-orange-600 border-orange-200";
         case "Paket Sudah Diambil": return "bg-blue-100 text-blue-500 border-blue-200";
         case "Kurir Menuju Lokasi": return "bg-yellow-100 text-yellow-600 border-yellow-200";
-        default: return "bg-gray-100 text-gray-500 border-gray-200"; // Menunggu Kurir
+        default: return "bg-gray-100 text-gray-500 border-gray-200";
       }
     };
 
-    // Ekstrak data kurir dari hasil join Supabase
-    const dataKurir = shipment.couriers; // Hasil join biasanya dalam bentuk nested object
+    const dataKurir = shipment.couriers; 
 
     const formattedData = {
       status: currentStatusTitle,
@@ -77,12 +74,10 @@ export async function GET(
       history: history,
       email_pelanggan: shipment.customer_email,
       
-      // VVV --- TAMBAHAN DATA KURIR UNTUK FRONTEND --- VVV
-      kurir_nama: dataKurir?.username, 
+      kurir_nama: dataKurir?.username || "Kurir Baru", 
       kurir_avatar: dataKurir?.avatar_url,
-      kurir_plat: dataKurir?.plat_nomor,
-      kurir_telp: dataKurir?.phone,
-      // ^^^ ---------------------------------------- ^^^
+      kurir_plat: dataKurir?.plat_nomor || "-",
+      kurir_telp: dataKurir?.phone || "-",
     };
 
     return NextResponse.json(formattedData);
