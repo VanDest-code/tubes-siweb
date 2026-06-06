@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Truck, Search, User, Clock } from "lucide-react";
+import { Truck, Search, User, Clock, Hand, Lightbulb } from "lucide-react"; // Hanya menambah import ini
 import { supabase } from "@/lib/supabase"; 
 
 export default function PelangganHomePage() {
@@ -67,8 +67,8 @@ export default function PelangganHomePage() {
             )}
           </div>
           <div>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none mb-1">
-              Halo, {namaPelanggan || "Pelanggan"}! 👋
+            <h2 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight leading-none mb-1 flex items-center gap-2">
+              Halo, {namaPelanggan || "Pelanggan"}! <Hand size={24} className="text-amber-500" />
             </h2>
             <p className="text-sm text-gray-500 font-medium">Siap mengirim paket hari ini?</p>
           </div>
@@ -79,14 +79,9 @@ export default function PelangganHomePage() {
         </div>
       </div>
 
-      {/* 2. MENU PINTASAN (SHORTCUTS) - MONOCHROMATIC GREEN PALETTE */}
+      {/* 2. MENU PINTASAN */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-        
-        {/* Shortcut 1: Request Pickup (Solid Gradient Green) */}
-        <Link 
-          href="/auth/dashboard/pelanggan/request-pickup"
-          className="group relative overflow-hidden bg-gradient-to-br from-[#4CAF50] to-[#2E7D32] rounded-[32px] p-8 min-h-[240px] flex flex-col justify-end shadow-xl shadow-green-200/50 hover:-translate-y-2 transition-all duration-300"
-        >
+        <Link href="/auth/dashboard/pelanggan/request-pickup" className="group relative overflow-hidden bg-gradient-to-br from-[#4CAF50] to-[#2E7D32] rounded-[32px] p-8 min-h-[240px] flex flex-col justify-end shadow-xl shadow-green-200/50 hover:-translate-y-2 transition-all duration-300">
           <Truck size={120} className="absolute -right-6 -top-6 text-white opacity-20 group-hover:scale-110 group-hover:opacity-30 transition-all duration-500" />
           <div className="bg-white/20 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-sm border border-white/30">
             <Truck size={28} className="text-white" />
@@ -95,11 +90,7 @@ export default function PelangganHomePage() {
           <p className="text-green-50 text-sm font-medium opacity-90">Kirim paket dari rumah</p>
         </Link>
 
-        {/* Shortcut 2: Tracking (Nadebee Green Accents) */}
-        <Link 
-          href="/auth/dashboard/pelanggan/tracking"
-          className="group relative overflow-hidden bg-white border border-gray-100 rounded-[32px] p-8 min-h-[240px] flex flex-col justify-end shadow-sm hover:border-[#4CAF50] hover:shadow-green-100 hover:-translate-y-2 transition-all duration-300"
-        >
+        <Link href="/auth/dashboard/pelanggan/tracking" className="group relative overflow-hidden bg-white border border-gray-100 rounded-[32px] p-8 min-h-[240px] flex flex-col justify-end shadow-sm hover:border-[#4CAF50] hover:shadow-green-100 hover:-translate-y-2 transition-all duration-300">
           <Search size={120} className="absolute -right-6 -top-6 text-[#4CAF50] opacity-5 group-hover:scale-110 group-hover:opacity-10 transition-all duration-500" />
           <div className="bg-[#F1F8E9] w-14 h-14 rounded-2xl flex items-center justify-center mb-6 border border-green-100">
             <Search size={28} className="text-[#4CAF50]" />
@@ -108,11 +99,7 @@ export default function PelangganHomePage() {
           <p className="text-gray-400 text-sm font-medium">Pantau resi aktif</p>
         </Link>
 
-        {/* Shortcut 3: Riwayat (Emerald Green Accents) */}
-        <Link 
-          href="/auth/dashboard/pelanggan/riwayat"
-          className="group relative overflow-hidden bg-white border border-gray-100 rounded-[32px] p-8 min-h-[240px] flex flex-col justify-end shadow-sm hover:border-emerald-400 hover:shadow-emerald-100 hover:-translate-y-2 transition-all duration-300"
-        >
+        <Link href="/auth/dashboard/pelanggan/riwayat" className="group relative overflow-hidden bg-white border border-gray-100 rounded-[32px] p-8 min-h-[240px] flex flex-col justify-end shadow-sm hover:border-emerald-400 hover:shadow-emerald-100 hover:-translate-y-2 transition-all duration-300">
           <Clock size={120} className="absolute -right-6 -top-6 text-emerald-500 opacity-5 group-hover:scale-110 group-hover:opacity-10 transition-all duration-500" />
           <div className="bg-emerald-50 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 border border-emerald-100">
             <Clock size={28} className="text-emerald-500" />
@@ -120,16 +107,15 @@ export default function PelangganHomePage() {
           <h3 className="text-2xl font-black text-gray-900 leading-tight mb-1">Riwayat<br/>Pesanan</h3>
           <p className="text-gray-400 text-sm font-medium">Cek transaksi lalu</p>
         </Link>
-
       </div>
 
       {/* 3. TIPS BOX */}
-      <div className="w-full bg-[#EAF5EB] py-10 px-6 rounded-[32px] text-center mt-2 shadow-sm border border-white/50">
-        <h4 className="text-[17px] font-medium text-gray-600 mb-3 flex items-center justify-center gap-2">
-          💡 Tips
+      <div className="w-full bg-[#EAF5EB] py-8 px-6 rounded-[32px] text-center shadow-sm border border-white/50">
+        <h4 className="text-base md:text-[17px] font-bold text-gray-700 mb-2 flex items-center justify-center gap-2">
+          <Lightbulb size={20} className="text-yellow-500" /> Tips
         </h4>
-        <p className="text-[16px] text-gray-600 max-w-md mx-auto leading-relaxed">
-          Pastikan barangmu sudah dikemas dengan rapi, aman, <br className="hidden md:block"/>dan rapat sebelum kurir Nadebee datang menjemput!
+        <p className="text-sm md:text-[16px] text-gray-600 max-w-md mx-auto leading-relaxed">
+          Pastikan barangmu sudah dikemas dengan rapi, aman, dan rapat sebelum kurir Nadebee datang menjemput!
         </p>
       </div>
     </div>

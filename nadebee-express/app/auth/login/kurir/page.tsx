@@ -2,7 +2,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase'; 
+import { supabase } from '@/lib/supabase';
+// Import ikon Truck dan Check
+import { Truck, Check } from 'lucide-react'; 
 
 export default function LoginKurir() {
   const router = useRouter();
@@ -17,7 +19,6 @@ export default function LoginKurir() {
     setLoading(true);
     let newErrors: {email?: string; code?: string; auth?: string} = {};
 
-    // 1. Validasi Format (Frontend)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; 
 
     if (!email) {
@@ -28,8 +29,8 @@ export default function LoginKurir() {
 
     if (!kurirCode) {
       newErrors.code = "Kode Kurir wajib diisi";
-    } else if (!/^\d{6}$/.test(kurirCode)) { // <-- Ganti \d{5} jadi \d{6}
-      newErrors.code = "Kode Kurir harus persis 6 digit angka"; // <-- Ganti teksnya
+    } else if (!/^\d{6}$/.test(kurirCode)) { 
+      newErrors.code = "Kode Kurir harus persis 6 digit angka"; 
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -38,7 +39,6 @@ export default function LoginKurir() {
       return;
     }
 
-    // 2. Proses Login Query ke Supabase khusus Kurir
     try {
       const { data, error } = await supabase
         .from("couriers")
@@ -53,9 +53,7 @@ export default function LoginKurir() {
       } else {
         setErrors({});
         sessionStorage.setItem("loggedInCourierId", data.id);
-        // --- TIKET SAKTI UNTUK MELEWATI MIDDLEWARE ---
         document.cookie = "nadebee-auth-token=true; path=/; max-age=86400";
-        // ----------------------------------------------
         setShowSuccess(true);
         setLoading(false);
       }
@@ -66,7 +64,6 @@ export default function LoginKurir() {
     }
   };
 
-  // Logika untuk mengambil nama dari email untuk sapaan
   const namaKurir = email ? email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1) : "";
 
   return (
@@ -90,13 +87,17 @@ export default function LoginKurir() {
 
       {/* --- CONTENT AREA --- */}
       <div className="flex flex-col items-center px-6 py-8 md:py-12 w-full max-w-md">
-        <div className="bg-nadebee-primary p-4 rounded-2xl text-white text-2xl md:text-3xl mb-6 shadow-lg">🚚</div>
+        
+        {/* Ikon Truck menggantikan emoji 🚚 */}
+        <div className="bg-nadebee-primary p-4 rounded-2xl text-white text-2xl md:text-3xl mb-6 shadow-lg">
+          <Truck size={32} />
+        </div>
+        
         <h1 className="text-base md:text-lg font-bold mb-6 md:mb-8 text-gray-800 uppercase tracking-wide text-center">
           Masuk sebagai Kurir
         </h1>
 
         <form onSubmit={handleLogin} className="w-full bg-white p-6 md:p-8 rounded-[32px] border-none shadow-xl shadow-green-900/5 space-y-6">
-          {/* Tampilkan Error Auth jika ada */}
           {errors.auth && (
             <div className="bg-red-50 text-red-500 text-[11px] p-3 rounded-lg border border-red-100 text-center italic">
               {errors.auth}
@@ -145,8 +146,9 @@ export default function LoginKurir() {
       {showSuccess && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 px-6 md:px-10">
           <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-xs flex flex-col items-center animate-in fade-in zoom-in duration-300 shadow-2xl">
+            {/* Ikon Check menggantikan emoji ✓ */}
             <div className="w-12 h-12 rounded-full border-2 border-nadebee-primary flex items-center justify-center text-nadebee-primary text-2xl mb-4">
-              ✓
+              <Check size={24} />
             </div>
             <h3 className="font-bold text-gray-800 text-sm md:text-base mb-1">Login Berhasil.</h3>
             <p className="text-gray-500 text-[11px] md:text-sm mb-6 text-center">Selamat datang {namaKurir} dan selamat bekerja!</p>
