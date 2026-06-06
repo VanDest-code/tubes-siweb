@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
-
-const supabase = createRouteHandlerClient({ cookies });
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // 1. Ambil user aktif langsung dari instance supabase
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // 1. Tangkap email yang dikirim dari Frontend
+    const customerEmail = body.customer_email;
 
-    if (userError || !user || !user.email) {
-      return NextResponse.json({ error: "Sesi tidak ditemukan" }, { status: 401 });
+    if (!customerEmail) {
+      return NextResponse.json({ error: "Email pelanggan tidak terdeteksi" }, { status: 400 });
     }
 
     // 2. Cari nomor resi terakhir
@@ -38,7 +34,7 @@ export async function POST(request: Request) {
       .insert([
         {
           resi_number: newResiNumber,
-          customer_email: user.email, 
+          customer_email: customerEmail, // <--- Pakai email kiriman frontend!
           sender_name: body.senderName,
           sender_phone: body.senderPhone,
           sender_address: body.senderAddress,

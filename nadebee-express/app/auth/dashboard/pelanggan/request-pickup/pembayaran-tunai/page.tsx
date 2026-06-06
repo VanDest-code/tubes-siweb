@@ -2,13 +2,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react"; 
+import { supabase } from "@/lib/supabase"; // <-- TAMBAHAN IMPOR SUPABASE
 
 export default function TunaiPage() { 
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [totalBiaya, setTotalBiaya] = useState("20.000"); // Default 20rb
+  const [totalBiaya, setTotalBiaya] = useState("20.000");
 
-  // Opsional: Tarik data ongkir yang sudah dihitung dari halaman konfirmasi
   useEffect(() => {
     const savedCost = sessionStorage.getItem("totalOngkir");
     if (savedCost) {
@@ -19,11 +19,10 @@ export default function TunaiPage() {
   const handleKirimData = async () => {
     setIsLoading(true);
     
-    // Ambil data form, ongkir, id kurir, dan metode pembayaran dari sessionStorage
     const savedData = sessionStorage.getItem("pickupData");
     const savedCost = sessionStorage.getItem("totalOngkir");
     const savedCourierId = sessionStorage.getItem("selectedCourierId");
-    const savedPayment = sessionStorage.getItem("paymentMethod"); // <-- Ambil Metode Pembayaran
+    const savedPayment = sessionStorage.getItem("paymentMethod");
 
     if (!savedData) {
       alert("Data form hilang, silakan isi ulang.");
@@ -32,15 +31,18 @@ export default function TunaiPage() {
     }
 
     try {
+      // --- TAMBAHAN KUNCI: AMBIL EMAIL DI CLIENT SIDE ---
+      const { data: { user } } = await supabase.auth.getUser();
+
       const response = await fetch("/api/pickup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Kirim semuanya ke API backend
         body: JSON.stringify({
             ...JSON.parse(savedData),
             shippingCost: parseInt(savedCost || "20000"),
             courier_id: savedCourierId,
-            payment_method: savedPayment || "Tunai" // <-- Kirim ke API Backend
+            payment_method: savedPayment || "Tunai",
+            customer_email: user?.email // <-- SISIPKAN EMAIL KE BACKEND
         })
       });
 
@@ -79,6 +81,6 @@ export default function TunaiPage() {
       >
         {isLoading ? <Loader2 className="animate-spin" /> : "Oke, saya mengerti"}
       </button>
-    </div> // <-- INI TAG PENUTUP YANG HILANG SEBELUMNYA
+    </div>
   );
 }

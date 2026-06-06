@@ -35,17 +35,25 @@ export default function KurirHome() {
   // Set Default Date Range (1 Bulan Terakhir) saat komponen pertama kali dimuat
   useEffect(() => {
     const today = new Date();
+    
+    // Bikin helper function agar formatnya YYYY-MM-DD tapi pakai WAKTU LOKAL
+    const formatDateLocal = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     const lastMonth = new Date(today);
     lastMonth.setMonth(today.getMonth() - 1);
     
-    setEndDate(today.toISOString().split('T')[0]);
-    setStartDate(lastMonth.toISOString().split('T')[0]);
+    // Panggil fungsi helpernya, tinggalkan toISOString()
+    setEndDate(formatDateLocal(today));
+    setStartDate(formatDateLocal(lastMonth));
   }, []);
 
   // Tarik Data Kurir & Statistik Pesanan + RADAR REALTIME
   useEffect(() => {
-    const savedCourierId = sessionStorage.getItem("loggedInCourierId") || "a2c08fd2-ccc2-4271-8a7b-b74870c9dd60";
-
     const fetchDashboardData = async () => {
       // Tunggu sampai tanggal default ter-set
       if (!startDate || !endDate) return;
@@ -53,19 +61,29 @@ export default function KurirHome() {
       try {
         setLoadingName(true);
         
+        // --- KEMBALI MENGGUNAKAN SESSION STORAGE (Sesuai Logika Login-mu) ---
+        // Tapi perhatikan: KITA HAPUS ID GAIB-NYA!
+        const actualCourierId = sessionStorage.getItem("loggedInCourierId");
+        
+        if (!actualCourierId) {
+          console.error("ID Kurir tidak ditemukan di sesi browser!");
+          return; // Hentikan proses jika belum login
+        }
+        // -------------------------------------------------------------------
+
         // 1. Tarik Nama Kurir & Avatar
         const { data: courierData } = await supabase
           .from("couriers")
-          .select("username, avatar_url") // <-- REVISI: Ambil avatar_url juga
-          .eq("id", savedCourierId)
+          .select("username, avatar_url")
+          .eq("id", actualCourierId) // <-- Cocokkan dengan ID di session
           .single();
 
         if (courierData) {
           setCourierName(courierData.username);
-          setCourierAvatar(courierData.avatar_url || ""); // <-- Set avatar
+          setCourierAvatar(courierData.avatar_url || ""); 
         }
 
-        // 2. Tarik Semua Pesanan (Shipments) Milik Kurir Ini & Filter berdasarkan Tanggal!
+        // 2. Tarik Semua Pesanan (Shipments) Milik Kurir Ini
         const start = new Date(startDate);
         start.setHours(0, 0, 0, 0);
         
@@ -75,7 +93,7 @@ export default function KurirHome() {
         const { data: shipmentsData, error } = await supabase
           .from("shipments")
           .select("*, created_at")
-          .eq("courier_id", savedCourierId)
+          .eq("courier_id", actualCourierId) 
           .gte("created_at", start.toISOString())
           .lte("created_at", end.toISOString())
           .order("created_at", { ascending: true }); 
@@ -144,7 +162,7 @@ export default function KurirHome() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [startDate, endDate]); 
+  }, [startDate, endDate]);
 
   const formattedDate = time
     ? time.toLocaleDateString("id-ID", {
