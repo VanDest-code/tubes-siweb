@@ -16,12 +16,11 @@ function TrackingContent() {
   const [mounted, setMounted] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  // --- FUNGSI STANDAR WARNA (DISELARASKAN DENGAN KURIR) ---
   const getStatusStyle = (rawStatus: string) => {
     const statusStr = (rawStatus || "").toLowerCase().trim();
     switch (statusStr) {
-      case "menunggu kurir": return "bg-orange-50 text-orange-500 border-orange-200"; // <-- Berubah jadi Oranye!
-      case "kurir menuju lokasi": return "bg-orange-50 text-orange-500 border-orange-200"; // <-- Kuning agar beda dari menunggu
+      case "menunggu kurir": return "bg-orange-50 text-orange-500 border-orange-200"; 
+      case "kurir menuju lokasi": return "bg-orange-50 text-orange-500 border-orange-200"; 
       case "paket sudah diambil": return "bg-blue-50 text-blue-500 border-blue-200"; 
       case "dalam perjalanan": return "bg-purple-50 text-purple-500 border-purple-200"; 
       case "selesai": return "bg-green-50 text-green-500 border-green-200"; 
@@ -54,7 +53,6 @@ function TrackingContent() {
       setCurrentData(data);
       setStatus("success");
       
-      // Jika dipanggil saat refresh, langsung buka halaman detail
       if (autoShowDetail) {
         setShowDetail(true);
       }
@@ -65,7 +63,6 @@ function TrackingContent() {
     }
   };
 
-  // --- DETEKSI REFRESH DARI URL ---
   useEffect(() => { 
     setMounted(true); 
     const resiFromUrl = searchParams.get("resi");
@@ -78,14 +75,18 @@ function TrackingContent() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const query = searchQuery.toUpperCase().trim();
-    if (!query) return;
+    
+    // --- PERBAIKAN POIN 2: ERROR JIKA SEARCH KOSONG ---
+    if (!query) {
+      setStatus("error");
+      setErrorMessage("NOMOR RESI WAJIB DIISI");
+      return;
+    }
 
-    // Bersihkan URL saat melakukan pencarian manual yang baru
     router.replace('/auth/dashboard/pelanggan/tracking');
     performSearch(query, false);
   };
 
-  // --- NAVIGASI KLIK ---
   const handleOpenDetail = () => {
     setShowDetail(true);
     router.push(`/auth/dashboard/pelanggan/tracking?resi=${searchQuery.toUpperCase()}`);
@@ -98,7 +99,6 @@ function TrackingContent() {
 
   if (!mounted) return null;
 
-  // --- VIEW DETAIL (FULL PAGE) ---
   if (showDetail && status === "success" && currentData) {
     return (
       <main className="w-full flex flex-col items-center pt-6 pb-20 px-6 max-w-5xl mx-auto animate-in fade-in duration-500">
@@ -148,12 +148,10 @@ function TrackingContent() {
                 </div>
               </div>
               
-              {/* VVV --- KARTU PROFIL KURIR DINAMIS --- VVV */}
               {currentData.status !== "Menunggu Kurir" && (
                 <div className="space-y-4">
                   <p className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Informasi Kurir</p>
                   <div className="bg-[#F8FAF8] rounded-[24px] p-6 border border-green-100 flex items-center gap-5 shadow-sm">
-                    {/* Wajah Kurir (Preview) */}
                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#4CAF50] bg-white flex items-center justify-center shrink-0">
                       {currentData.kurir_avatar ? (
                         <img src={currentData.kurir_avatar} alt={`Foto ${currentData.kurir_nama}`} className="w-full h-full object-cover" />
@@ -181,7 +179,6 @@ function TrackingContent() {
                   </div>
                 </div>
               )}
-              {/* ^^^ ----------------------------------- ^^^ */}
 
               {currentData.status === "Selesai" && currentData.proof_image_url && (
                 <div className="space-y-4">
@@ -198,12 +195,14 @@ function TrackingContent() {
     );
   }
 
-  // --- VIEW AWAL ---
   return (
     <main className="w-full flex flex-col items-center pt-10 pb-20 px-6 max-w-5xl mx-auto">
       <div className="w-full">
         <div className="mb-8">
-          <h2 className="text-[22px] font-black text-gray-900 flex items-center gap-2 tracking-tight">Lacak Paket 📦</h2>
+          {/* --- PERBAIKAN POIN 7: HAPUS EMOJI, GANTI DENGAN IKON LUCIDE --- */}
+          <h2 className="text-[22px] font-black text-gray-900 flex items-center gap-2 tracking-tight">
+            Lacak Paket <Package size={24} className="text-[#4CAF50] ml-1" />
+          </h2>
           <p className="text-gray-500 text-[14px]">Masukkan nomor resi untuk mulai melacak</p>
         </div>
 
@@ -288,7 +287,6 @@ function TrackingContent() {
   );
 }
 
-// WAJIB: Bungkus dengan Suspense untuk menghindari error Next.js karena menggunakan useSearchParams
 export default function TrackingPage() {
   return (
     <Suspense fallback={<div className="flex justify-center pt-20"><Loader2 className="animate-spin text-[#4CAF50]" size={40} /></div>}>

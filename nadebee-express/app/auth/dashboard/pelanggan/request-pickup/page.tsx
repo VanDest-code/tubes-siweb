@@ -13,22 +13,18 @@ export default function RequestPickupPage() {
     senderName: "", senderPhone: "", senderAddress: "",
     receiverName: "", receiverPhone: "", receiverAddress: "",
     itemType: "", destination: "", weight: "", note: "", 
-    vehicleType: "Motor" // Default Motor
+    vehicleType: "Motor" 
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // --- LOGIKA 1: Tarik Draft ATAU Tarik Data Profil ---
   useEffect(() => {
     const fetchInitialData = async () => {
-      // Cek memori draft browser
       const savedDraft = sessionStorage.getItem("pickupDraft");
       
       if (savedDraft) {
-        // Kalau ada ketikan yang belum selesai, pulihkan datanya!
         setFormData(JSON.parse(savedDraft));
       } else {
-        // Kalau kosong, bantu isikan nama & telepon dari profil database
         try {
           const { data: { session } } = await supabase.auth.getSession();
           
@@ -55,9 +51,7 @@ export default function RequestPickupPage() {
     fetchInitialData();
   }, []);
 
-  // --- LOGIKA 2: Auto-Save Ketikan Pelanggan ---
   useEffect(() => {
-    // Simpan ke draft hanya jika ada minimal 1 huruf yang diisi pelanggan (agar tidak nge-save form kosong)
     if (formData.senderName || formData.receiverName || formData.senderAddress || formData.note) {
       sessionStorage.setItem("pickupDraft", JSON.stringify(formData));
     }
@@ -65,12 +59,38 @@ export default function RequestPickupPage() {
   
   const handleValidation = () => {
     let newErrors: Record<string, string> = {};
+    
+    // Validasi Pengirim
     if (!formData.senderName) newErrors.senderName = "Nama wajib diisi";
-    if (!formData.senderPhone) newErrors.senderPhone = "No.telepon wajib diisi";
+    
+    if (!formData.senderPhone) {
+      newErrors.senderPhone = "No.telepon wajib diisi";
+    } else if (!/^[0-9]+$/.test(formData.senderPhone)) {
+      newErrors.senderPhone = "Format salah. Hanya boleh berisi angka.";
+    } else if (formData.senderPhone.length < 10) {
+      newErrors.senderPhone = "Minimal 10 digit angka";
+    } else if (formData.senderPhone.length > 13) {
+      newErrors.senderPhone = "Maksimal 13 digit angka";
+    }
+
     if (!formData.senderAddress) newErrors.senderAddress = "Alamat wajib diisi";
+
+    // Validasi Penerima
     if (!formData.receiverName) newErrors.receiverName = "Nama wajib diisi";
-    if (!formData.receiverPhone) newErrors.receiverPhone = "No.telepon wajib diisi";
+    
+    if (!formData.receiverPhone) {
+      newErrors.receiverPhone = "No.telepon wajib diisi";
+    } else if (!/^[0-9]+$/.test(formData.receiverPhone)) {
+      newErrors.receiverPhone = "Format salah. Hanya boleh berisi angka.";
+    } else if (formData.receiverPhone.length < 10) {
+      newErrors.receiverPhone = "Minimal 10 digit angka";
+    } else if (formData.receiverPhone.length > 13) {
+      newErrors.receiverPhone = "Maksimal 13 digit angka";
+    }
+
     if (!formData.receiverAddress) newErrors.receiverAddress = "Alamat wajib diisi";
+    
+    // Validasi Tambahan
     if (!formData.itemType) newErrors.itemType = "Jenis wajib diisi";
     if (!formData.destination) newErrors.destination = "Wilayah wajib diisi";
     if (!formData.weight) newErrors.weight = "Berat wajib diisi";
@@ -78,7 +98,6 @@ export default function RequestPickupPage() {
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
-      // Lulus validasi -> Simpan sebagai pickupData untuk halaman selanjutnya
       sessionStorage.setItem("pickupData", JSON.stringify(formData));
       router.push("/auth/dashboard/pelanggan/request-pickup/pilih-kurir");
     }
@@ -96,20 +115,42 @@ export default function RequestPickupPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <SectionCard title="Data Pengirim">
             <InputField label="Nama" placeholder="Masukkan nama" value={formData.senderName} error={errors.senderName} 
-              onChange={(v: string) => setFormData({...formData, senderName: v})} />
+              onChange={(v: string) => {
+                setFormData({...formData, senderName: v});
+                setErrors(prev => ({...prev, senderName: ""}));
+              }} />
+            
             <InputField label="No.Telepon" placeholder="Masukkan no.telepon" value={formData.senderPhone} error={errors.senderPhone} 
-              onChange={(v: string) => setFormData({...formData, senderPhone: v})} />
+              onChange={(v: string) => {
+                setFormData({...formData, senderPhone: v});
+                setErrors(prev => ({...prev, senderPhone: ""}));
+              }} />
+              
             <InputField label="Alamat Pickup" placeholder="Masukkan alamat" value={formData.senderAddress} error={errors.senderAddress} 
-              onChange={(v: string) => setFormData({...formData, senderAddress: v})} />
+              onChange={(v: string) => {
+                setFormData({...formData, senderAddress: v});
+                setErrors(prev => ({...prev, senderAddress: ""}));
+              }} />
           </SectionCard>
 
           <SectionCard title="Data Penerima">
             <InputField label="Nama" placeholder="Masukkan nama" value={formData.receiverName} error={errors.receiverName} 
-              onChange={(v: string) => setFormData({...formData, receiverName: v})} />
+              onChange={(v: string) => {
+                setFormData({...formData, receiverName: v});
+                setErrors(prev => ({...prev, receiverName: ""}));
+              }} />
+            
             <InputField label="No.Telepon" placeholder="Masukkan no.telepon" value={formData.receiverPhone} error={errors.receiverPhone} 
-              onChange={(v: string) => setFormData({...formData, receiverPhone: v})} />
+              onChange={(v: string) => {
+                setFormData({...formData, receiverPhone: v});
+                setErrors(prev => ({...prev, receiverPhone: ""}));
+              }} />
+              
             <InputField label="Alamat Tujuan" placeholder="Masukkan alamat" value={formData.receiverAddress} error={errors.receiverAddress} 
-              onChange={(v: string) => setFormData({...formData, receiverAddress: v})} />
+              onChange={(v: string) => {
+                setFormData({...formData, receiverAddress: v});
+                setErrors(prev => ({...prev, receiverAddress: ""}));
+              }} />
           </SectionCard>
         </div>
 
@@ -119,7 +160,10 @@ export default function RequestPickupPage() {
             placeholder={formData.itemType || "Pilih jenis barang"} 
             error={errors.itemType}
             options={["Dokumen", "Barang Elektronik", "Makanan", "Barang Pecah Belah", "Lainnya"]}
-            onSelect={(v: string) => setFormData({...formData, itemType: v})}
+            onSelect={(v: string) => {
+              setFormData({...formData, itemType: v});
+              setErrors(prev => ({...prev, itemType: ""}));
+            }}
           />
           <DropdownField 
             label="Wilayah Tujuan" 
@@ -131,7 +175,10 @@ export default function RequestPickupPage() {
               {n: "Bantul", p: "Rp. 30.000"}, {n: "Kulon Progo", p: "Rp. 40.000"},
               {n: "Gunung Kidul", p: "Rp. 50.000"}
             ]}
-            onSelect={(v: string) => setFormData({...formData, destination: v})}
+            onSelect={(v: string) => {
+              setFormData({...formData, destination: v});
+              setErrors(prev => ({...prev, destination: ""}));
+            }}
           />
           <DropdownField 
             label="Prediksi Berat" 
@@ -139,6 +186,7 @@ export default function RequestPickupPage() {
             error={errors.weight}
             options={["< 1 kg", "1-5 kg", "5-10 kg"]}
             onSelect={(v: string) => {
+              setErrors(prev => ({...prev, weight: ""}));
               if (v === "5-10 kg") {
                 setFormData({...formData, weight: v, vehicleType: "Mobil"});
               } else {

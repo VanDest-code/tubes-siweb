@@ -130,7 +130,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
               className="flex items-center gap-4 px-6 py-4 w-full text-red-500 font-black hover:bg-red-50 rounded-[22px] transition-all group"
             >
               <LogOut size={22} strokeWidth={2.5} className="group-hover:-translate-x-1 transition-transform" />
-              <span>Keluar</span>
+              <span>Logout</span>
             </button>
           </div>
         </div>
