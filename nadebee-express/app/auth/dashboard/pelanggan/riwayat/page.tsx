@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Trash2, Search, Calendar, Package, ChevronRight, ChevronLeft } from "lucide-react"; // <-- ICON DITAMBAHKAN LENGKAP
+import { Trash2, Search, Calendar, Package, ChevronRight, ChevronLeft } from "lucide-react"; 
 
 export default function RiwayatPickupPage() {
   const router = useRouter();
@@ -237,11 +237,11 @@ export default function RiwayatPickupPage() {
         <div className="space-y-4 mb-6 relative">
           <div className="relative w-full">
             <span className="absolute inset-y-0 left-4 flex items-center text-gray-400">
-              <Search size={20} /> {/* <-- REVISI EMOTIKON */}
+              <Search size={20} /> 
             </span>
             <input
               type="text"
-              placeholder='Cari resi, nama, atau barang...' // <-- REVISI PLACEHOLDER
+              placeholder='Cari resi, nama, atau barang...' 
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -257,7 +257,7 @@ export default function RiwayatPickupPage() {
               onClick={() => setIsCalendarOpen(!isCalendarOpen)}
               className="flex items-center gap-2 bg-white border border-gray-400 rounded-xl px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
             >
-              <Calendar size={14} className="text-[#4CAF50]"/> {/* <-- REVISI EMOTIKON */}
+              <Calendar size={14} className="text-[#4CAF50]"/> 
               {selectedDate ? `Tanggal: ${selectedDate}` : "Filter Tanggal"}
             </button>
 
@@ -367,7 +367,7 @@ export default function RiwayatPickupPage() {
                       <div className="flex flex-col justify-center">
                         <span className="font-bold text-lg mb-2">{item.id}</span>
                         <div className="bg-[#E8F5E9]/60 w-14 h-14 flex items-center justify-center rounded-xl border border-green-200 shadow-sm shrink-0">
-                          <Package size={28} className="text-[#4CAF50]" /> {/* <-- REVISI EMOTIKON */}
+                          <Package size={28} className="text-[#4CAF50]" /> 
                         </div>
                       </div>
 
@@ -379,6 +379,7 @@ export default function RiwayatPickupPage() {
 
                     <div className="flex items-center justify-between md:justify-end md:gap-6 w-full md:w-auto mt-4 md:mt-0">
                       
+                      {/* === PENAMBAHAN .toUpperCase() PADA RENDER STATUS === */}
                       <span className={`px-8 py-2 rounded-full text-xs font-bold border text-center whitespace-nowrap ${
                         (item.status || "").toLowerCase().trim() === "selesai" 
                           ? "bg-[#E8F5E9] border-green-200 text-green-600" 
@@ -388,7 +389,7 @@ export default function RiwayatPickupPage() {
                           ? "bg-blue-50 border-blue-200 text-blue-600"
                           : "bg-orange-50 border-orange-200 text-orange-600"
                       }`}>
-                        {item.status}
+                        {(item.status || "").toUpperCase()}
                       </span>
                       
                       {isMenungguKurir && (
@@ -409,7 +410,7 @@ export default function RiwayatPickupPage() {
                         type="button"
                         className="text-green-600 font-bold cursor-pointer hover:translate-x-1 transition-transform p-2 hidden md:block shrink-0"
                       >
-                        <ChevronRight size={24} /> {/* <-- REVISI EMOTIKON */}
+                        <ChevronRight size={24} /> 
                       </button>
 
                     </div>

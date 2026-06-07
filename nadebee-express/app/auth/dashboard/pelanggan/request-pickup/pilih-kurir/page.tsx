@@ -66,16 +66,17 @@ export default function PilihKurir() {
     <main className="min-h-screen bg-[#F4F9F4] font-sans pb-20">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
-      <section className="w-full max-w-[1100px] mx-auto pt-10 px-6 pb-24">
-        <div className="mb-10">
-          <h2 className="text-[28px] font-bold text-[#1A1A1A]">Pilih Kurir {targetVehicle}</h2>
-          <p className="text-gray-500 text-sm">Hanya menampilkan kurir dengan armada {targetVehicle} di sekitarmu</p>
+      {/* Mengatur padding atas dan samping agar lebih pas di mobile */}
+      <section className="w-full max-w-[1100px] mx-auto pt-6 md:pt-10 px-4 md:px-6 pb-24">
+        <div className="mb-6 md:mb-10">
+          <h2 className="text-[22px] md:text-[28px] font-bold text-[#1A1A1A]">Pilih Kurir {targetVehicle}</h2>
+          <p className="text-gray-500 text-xs md:text-sm mt-1 md:mt-0">Hanya menampilkan kurir dengan armada {targetVehicle} di sekitarmu</p>
         </div>
 
         <div className="w-full flex justify-start mb-6">
           <button 
             onClick={() => router.back()}
-            className="text-gray-400 hover:text-gray-600 transition-all font-medium italic text-sm flex items-center gap-2 cursor-pointer"
+            className="text-gray-400 hover:text-gray-600 transition-all font-medium italic text-xs md:text-sm flex items-center gap-2 cursor-pointer"
           >
             ← Kembali
           </button>
@@ -83,7 +84,7 @@ export default function PilihKurir() {
         
         <div className="space-y-4 mb-4">
           {loading ? (
-            <div className="text-center py-10 font-bold text-[#4CAF50] animate-pulse">
+            <div className="text-center py-10 font-bold text-[#4CAF50] animate-pulse text-sm md:text-base">
               Mencari kurir dengan {targetVehicle}...
             </div>
           ) : couriers.length > 0 ? (
@@ -94,35 +95,37 @@ export default function PilihKurir() {
                   setSelectedCourier(kurir.id);
                   setError(""); 
                 }}
-                className={`bg-white border-2 rounded-[25px] p-6 flex items-center justify-between cursor-pointer transition-all duration-200 ${
+                // Mengubah padding dan rounded khusus mobile
+                className={`bg-white border-2 rounded-[20px] md:rounded-[25px] p-4 md:p-6 flex items-center justify-between cursor-pointer transition-all duration-200 ${
                   selectedCourier === kurir.id 
                     ? "border-[#4CAF50] bg-[#F0FDF4] shadow-md" 
                     : "border-green-100 hover:border-green-300"
                 }`}
               >
                 {/* --- KARTU KURIR KIRI --- */}
-                <div className="flex items-center gap-6">
+                {/* Menyesuaikan gap antar elemen di mobile */}
+                <div className="flex items-center gap-3 md:gap-6">
                   
-                  {/* FOTO KURIR DINAMIS */}
-                  <div className="w-16 h-16 bg-[#E8F5E9] rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border border-green-200">
+                  {/* FOTO KURIR DINAMIS - Ukuran dikecilkan sedikit di HP */}
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-[#E8F5E9] rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border border-green-200">
                     {kurir.avatar_url ? (
                       <img src={kurir.avatar_url} alt={`Foto ${kurir.username}`} className="w-full h-full object-cover" />
                     ) : (
-                      <User size={32} className="text-[#4CAF50]" />
+                      <User className="text-[#4CAF50] w-6 h-6 md:w-8 md:h-8" />
                     )}
                   </div>
                   
                   {/* INFO KURIR */}
                   <div>
-                    <h3 className="text-lg font-bold text-[#1A1A1A] mb-0.5">{kurir.username}</h3>
-                    <p className="text-gray-500 text-sm font-semibold mb-2">{kurir.phone}</p>
+                    <h3 className="text-base md:text-lg font-bold text-[#1A1A1A] mb-0.5">{kurir.username}</h3>
+                    <p className="text-gray-500 text-xs md:text-sm font-semibold mb-2">{kurir.phone}</p>
 
-                    {/* KENDARAAN DAN PLAT NOMOR */}
-                    <div className="flex gap-2">
-                       <span className="bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
+                    {/* KENDARAAN DAN PLAT NOMOR - flex-wrap agar tidak menabrak rating jika layar sangat kecil */}
+                    <div className="flex flex-wrap gap-1.5 md:gap-2">
+                       <span className="bg-green-100 text-green-700 text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
                          {kurir.jenis_kendaraan}
                        </span>
-                       <span className="bg-gray-100 text-gray-600 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider border border-gray-200">
+                       <span className="bg-gray-100 text-gray-600 text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider border border-gray-200">
                          {kurir.plat_nomor}
                        </span>
                     </div>
@@ -130,30 +133,31 @@ export default function PilihKurir() {
                 </div>
 
                 {/* --- KARTU KURIR KANAN (RATING) --- */}
-                <div className="flex items-center gap-1 bg-white px-3 py-1 rounded-full shadow-sm shrink-0 border border-gray-100">
-                  <Star size={18} className="fill-yellow-400 text-yellow-400" />
-                  <span className="font-bold text-[#1A1A1A]">
+                <div className="flex items-center gap-1 bg-white px-2 md:px-3 py-1 rounded-full shadow-sm shrink-0 border border-gray-100">
+                  <Star className="fill-yellow-400 text-yellow-400 w-4 h-4 md:w-[18px] md:h-[18px]" />
+                  <span className="font-bold text-[#1A1A1A] text-xs md:text-base">
                     {Number(kurir.rating).toFixed(1)}
                   </span>
                 </div>
               </div>
             ))
           ) : (
-            <div className="text-center py-10 bg-white rounded-[25px] border border-gray-200">
-              <p className="text-gray-500 font-bold">Waduh!</p>
-              <p className="text-gray-400 text-sm">Tidak ada kurir dengan armada {targetVehicle} yang tersedia saat ini. Coba lagi nanti!</p>
+            <div className="text-center py-10 bg-white rounded-[20px] md:rounded-[25px] border border-gray-200 mx-1">
+              <p className="text-gray-500 font-bold text-base md:text-lg">Waduh!</p>
+              <p className="text-gray-400 text-xs md:text-sm mt-1 px-4">Tidak ada kurir dengan armada {targetVehicle} yang tersedia saat ini. Coba lagi nanti!</p>
             </div>
           )}
         </div>
 
         {error && (
-          <p className="text-red-500 italic text-sm mb-8 ml-2">{error}</p>
+          <p className="text-red-500 italic text-xs md:text-sm mb-6 md:mb-8 ml-2">{error}</p>
         )}
 
+        {/* Ukuran tombol diresponsifkan */}
         <button
           onClick={handlePaymentNavigation}
           disabled={!selectedCourier}
-          className={`w-full py-5 rounded-[25px] font-bold text-lg transition-all shadow-lg ${
+          className={`w-full py-4 md:py-5 rounded-[20px] md:rounded-[25px] font-bold text-base md:text-lg transition-all shadow-lg mt-2 ${
             selectedCourier
               ? "bg-[#4CAF50] text-white hover:bg-[#43A047]"
               : "bg-gray-300 text-gray-400 cursor-not-allowed" 

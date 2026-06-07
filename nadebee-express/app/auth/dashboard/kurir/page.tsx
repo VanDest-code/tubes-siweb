@@ -1,13 +1,14 @@
 "use client"; 
 
 import { useState, useEffect } from "react";
-import { Wallet, Package, Truck, CheckCircle2, Calendar, User } from "lucide-react"; // <-- TAMBAH USER
+import { Wallet, Package, Truck, CheckCircle2, Calendar, User, Hand } from "lucide-react"; 
 import { supabase } from "@/lib/supabase"; 
 
 export default function KurirHome() {
+  const [mounted, setMounted] = useState(false); 
   const [time, setTime] = useState<Date | null>(null);
   const [courierName, setCourierName] = useState<string>("Kurir");
-  const [courierAvatar, setCourierAvatar] = useState<string>(""); // <-- TAMBAHAN STATE AVATAR
+  const [courierAvatar, setCourierAvatar] = useState<string>(""); 
   const [loadingName, setLoadingName] = useState<boolean>(true);
 
   // --- FILTER TANGGAL ---
@@ -25,6 +26,7 @@ export default function KurirHome() {
 
   // Jalankan jam digital
   useEffect(() => {
+    setMounted(true); 
     setTime(new Date()); 
     const interval = setInterval(() => {
       setTime(new Date());
@@ -210,12 +212,14 @@ export default function KurirHome() {
     return `M ${points.join(" L ")}`;
   };
 
+  if (!mounted) return null; 
+
   return (
-    <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 px-4 md:px-0 pb-20">
+    <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 px-4 md:px-0 pb-20 w-full overflow-x-hidden">
       
-      {/* --- REVISI: Header Salam & Foto Profil Kurir --- */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-0">
-        <div className="flex items-center gap-4">
+      {/* --- REVISI: Header Salam & Foto Profil Kurir (Fix Jebol) --- */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-0 w-full">
+        <div className="flex items-center gap-4 w-full md:w-auto">
           {/* Bulatan Avatar */}
           <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#4CAF50] bg-green-50 flex items-center justify-center shrink-0 shadow-sm">
             {courierAvatar ? (
@@ -224,56 +228,58 @@ export default function KurirHome() {
               <User size={24} className="text-[#4CAF50]" />
             )}
           </div>
-          <div>
+          {/* min-w-0 agar teks yang sangat panjang bisa dilipat dan tidak jebol */}
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold text-gray-900">Halo!</h1>
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-1">
-              Selamat datang Kurir {loadingName ? <span className="text-gray-400 animate-pulse">...</span> : courierName} 👋
+            <h2 className="text-xl font-bold text-gray-900 flex flex-wrap items-center gap-1">
+              Selamat datang Kurir {loadingName ? <span className="text-gray-400 animate-pulse">...</span> : <span className="break-words truncate max-w-full">{courierName}</span>} <Hand size={24} className="text-amber-500 shrink-0" />
             </h2>
           </div>
         </div>
-        <div className="text-left md:text-right">
+        <div className="text-left md:text-right shrink-0">
           <p className="text-sm text-gray-500 mb-1">Hari ini</p>
           <p className="font-bold text-gray-800">{formattedDate}</p>
           <p className="text-lg font-bold text-[#4CAF50]">{formattedTime}</p>
         </div>
       </div>
 
-      {/* --- FILTER TANGGAL --- */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4 shadow-sm">
-        <div className="flex items-center gap-2 text-gray-500 font-semibold mr-auto">
+      {/* --- FILTER TANGGAL (Fix Jebol) --- */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center gap-4 shadow-sm w-full">
+        <div className="flex items-center gap-2 text-gray-500 font-semibold shrink-0">
           <Calendar size={18} className="text-[#4CAF50]"/>
           <span className="text-sm">Filter Tanggal:</span>
         </div>
-        <div className="flex items-center gap-2 w-full md:w-auto">
+        {/* flex-col di mobile agar numpuk atas-bawah, flex-row di layar lebar */}
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto md:ml-auto">
           <input 
             type="date" 
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="w-full md:w-auto text-sm border border-gray-300 rounded-lg px-3 py-2 outline-none focus:border-green-500 transition-colors"
+            className="w-full sm:w-auto text-sm border border-gray-300 rounded-lg px-3 py-2 outline-none focus:border-green-500 transition-colors"
           />
-          <span className="text-gray-400 font-bold">-</span>
+          <span className="text-gray-400 font-bold hidden sm:block">-</span>
           <input 
             type="date" 
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="w-full md:w-auto text-sm border border-gray-300 rounded-lg px-3 py-2 outline-none focus:border-green-500 transition-colors"
+            className="w-full sm:w-auto text-sm border border-gray-300 rounded-lg px-3 py-2 outline-none focus:border-green-500 transition-colors"
           />
         </div>
       </div>
 
       {/* Card Pendapatan */}
-      <div className="bg-[#4CAF50] rounded-2xl p-6 text-white shadow-md shadow-green-200">
+      <div className="bg-[#4CAF50] rounded-2xl p-6 text-white shadow-md shadow-green-200 w-full">
         <div className="flex items-center gap-2 mb-2 opacity-90">
           <Wallet size={20} />
           <span className="font-medium text-sm">Total Pendapatan (Sesuai Filter)</span>
         </div>
-        <h3 className="text-3xl md:text-4xl font-bold tracking-tight">
+        <h3 className="text-3xl md:text-4xl font-bold tracking-tight break-all">
           Rp {totalPendapatan.toLocaleString('id-ID')}
         </h3>
       </div>
 
       {/* Status Pengiriman Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full">
         <div className="bg-white border border-green-500 rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm">
           <div className="flex items-center gap-2 text-red-500 font-semibold mb-2 text-sm">
             <Package size={18} />
@@ -300,7 +306,7 @@ export default function KurirHome() {
       </div>
 
       {/* DUA GRAFIK BERDAMPINGAN */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
         
         {/* BAR CHART: Status Pesanan */}
         <div className="bg-white border border-green-500 rounded-2xl p-6 md:p-8 pt-10 shadow-sm flex flex-col relative h-[300px]">

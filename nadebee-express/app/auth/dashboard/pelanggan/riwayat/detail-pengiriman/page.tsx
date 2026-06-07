@@ -69,7 +69,6 @@ function DetailPengirimanContent() {
     try {
       setIsSubmitting(true);
       
-      // Menggunakan .select() untuk memastikan data benar-benar berhasil diupdate (kebal RLS)
       const { data, error } = await supabase
         .from("shipments")
         .update({
@@ -81,12 +80,10 @@ function DetailPengirimanContent() {
 
       if (error) throw error;
 
-      // Jika data kosong, update diblokir oleh Supabase
       if (!data || data.length === 0) {
         throw new Error("Update diblokir oleh keamanan database (RLS)!");
       }
 
-      // Sinkronkan state lokal agar langsung mengunci ke mode Read-Only secara instan
       setDetailData((prev: any) => ({
         ...prev,
         rating: rating,
@@ -158,35 +155,35 @@ function DetailPengirimanContent() {
   const proofImageUrl = detailData.bukti_foto_url || "https://images.unsplash.com/photo-1580674285054-bed31e145f59?q=80&w=2070&auto=format&fit=crop";
 
   return (
-    <main className="w-full flex flex-col items-center pt-10 pb-20 px-6 max-w-[1200px] mx-auto animate-in fade-in duration-500">
+    <main className="w-full flex flex-col items-center pt-6 md:pt-10 pb-20 px-4 md:px-6 max-w-[1200px] mx-auto animate-in fade-in duration-500">
       
       <div className="w-full flex justify-start mb-4">
         <button 
           onClick={() => router.back()}
-          className="text-gray-400 hover:text-gray-600 transition-all font-medium italic text-sm flex items-center gap-2 cursor-pointer"
+          className="text-gray-400 hover:text-gray-600 transition-all font-medium italic text-xs md:text-sm flex items-center gap-2 cursor-pointer"
         >
           ← Kembali
         </button>
       </div>
 
-      <div className="w-full bg-white border border-black rounded-[40px] p-16 shadow-sm relative mb-8">
-        <h2 className="text-[28px] font-black text-center mb-16 text-black">Detail Pengiriman</h2>
+      <div className="w-full bg-white border border-black rounded-[24px] md:rounded-[40px] p-6 md:p-16 shadow-sm relative mb-8">
+        <h2 className="text-[22px] md:text-[28px] font-black text-center mb-8 md:mb-16 text-black pr-16 md:pr-0">Detail Pengiriman</h2>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-20 items-start">
           
           {/* --- KOLOM KIRI: INFO PAKET & STATUS TIMELINE --- */}
-          <div className="space-y-12">
+          <div className="space-y-8 md:space-y-12">
             
             <div className="flex flex-col sm:flex-row gap-4 w-full">
               {/* Box Nomor Resi */}
-              <div className="bg-[#E8F5E9]/60 border border-[#4CAF50]/30 rounded-[20px] p-6 flex-1 flex flex-col justify-center">
-                <p className="text-gray-400 text-[13px] font-bold mb-2 uppercase tracking-wider">Nomor Resi</p>
-                <p className="text-[#4CAF50] font-black text-[22px] tracking-tight">{detailData.resi_number}</p>
+              <div className="bg-[#E8F5E9]/60 border border-[#4CAF50]/30 rounded-[20px] p-5 md:p-6 flex-1 flex flex-col justify-center">
+                <p className="text-gray-400 text-[11px] md:text-[13px] font-bold mb-2 uppercase tracking-wider">Nomor Resi</p>
+                <p className="text-[#4CAF50] font-black text-lg md:text-[22px] tracking-tight">{detailData.resi_number}</p>
               </div>
 
-              {/* Box Info Kurir (BEBAS KENDARAAN) */}
-              <div className="bg-white border border-gray-200 rounded-[20px] p-5 flex-1 shadow-sm flex flex-col justify-center">
-                <p className="text-gray-400 text-[11px] font-bold mb-3 uppercase tracking-widest">
+              {/* Box Info Kurir */}
+              <div className="bg-white border border-gray-200 rounded-[20px] p-4 md:p-5 flex-1 shadow-sm flex flex-col justify-center">
+                <p className="text-gray-400 text-[10px] md:text-[11px] font-bold mb-3 uppercase tracking-widest">
                   Info Kurir
                 </p>
                 
@@ -196,21 +193,21 @@ function DetailPengirimanContent() {
                       <User size={18} />
                     </div>
                     <div>
-                      <p className="font-black text-[15px] text-black leading-tight">
+                      <p className="font-black text-[14px] md:text-[15px] text-black leading-tight">
                         {detailData.couriers.username}
                       </p>
-                      <p className="text-[12px] font-bold text-[#4CAF50] mt-1 flex items-center gap-1">
+                      <p className="text-[11px] md:text-[12px] font-bold text-[#4CAF50] mt-1 flex items-center gap-1">
                         📞 {detailData.couriers.phone || "-"}
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-[12px] font-medium text-gray-400 italic">Mencari kurir terdekat...</p>
+                  <p className="text-[11px] md:text-[12px] font-medium text-gray-400 italic">Mencari kurir terdekat...</p>
                 )}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-6 text-[15px]">
+            <div className="grid grid-cols-2 gap-x-2 md:gap-x-4 gap-y-4 md:gap-y-6 text-[13px] md:text-[15px]">
               <div>
                 <p className="text-gray-400 mb-1">Pengirim</p>
                 <p className="text-black font-black">{detailData.sender_name}</p>
@@ -229,14 +226,14 @@ function DetailPengirimanContent() {
               </div>
             </div>
 
-            <div className="space-y-8 pt-4">
+            <div className="space-y-6 md:space-y-8 pt-4">
               <h3 className="text-[16px] font-black text-black">Status</h3>
-              <div className="relative pl-2 space-y-12">
+              <div className="relative pl-2 space-y-10 md:space-y-12">
                 <div className="absolute left-[20px] top-4 bottom-4 w-[1px] bg-gray-300"></div>
 
                 {trackingStatus.map((item, idx) => (
-                  <div key={idx} className="flex gap-10 relative items-start">
-                    <div className={`z-10 w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all duration-300 ${
+                  <div key={idx} className="flex gap-6 md:gap-10 relative items-start">
+                    <div className={`z-10 w-10 h-10 shrink-0 rounded-xl flex items-center justify-center border-2 transition-all duration-300 ${
                       item.status === "completed" ? "bg-[#E8F5E9] border-[#4CAF50] text-[#4CAF50]" :
                       item.status === "active" ? "bg-[#4CAF50] border-[#4CAF50] text-white shadow-lg shadow-green-100" :
                       "bg-[#E0E0E0] border-[#E0E0E0] text-gray-500"
@@ -245,12 +242,12 @@ function DetailPengirimanContent() {
                     </div>
 
                     <div className="pt-1">
-                      <p className={`text-[16px] font-black leading-none mb-2 ${
+                      <p className={`text-[14px] md:text-[16px] font-black leading-none mb-1.5 md:mb-2 ${
                         item.status === "pending" ? "text-gray-400" : "text-black"
                       }`}>
                         {item.label}
                       </p>
-                      <p className="text-[12px] text-gray-400 font-medium leading-relaxed max-w-[320px]">
+                      <p className="text-[11px] md:text-[12px] text-gray-400 font-medium leading-relaxed max-w-[320px]">
                         {item.desc}
                       </p>
                     </div>
@@ -266,7 +263,7 @@ function DetailPengirimanContent() {
             {isSelesai ? (
               <div className="space-y-4">
                 <h3 className="text-[16px] font-black text-black">Bukti Pengiriman</h3>
-                <div className="w-full h-[320px] relative rounded-[20px] overflow-hidden border border-black bg-gray-50">
+                <div className="w-full h-[240px] md:h-[320px] relative rounded-[20px] overflow-hidden border border-black bg-gray-50">
                   <img 
                     src={proofImageUrl} 
                     alt="Bukti Pengiriman"
@@ -276,18 +273,18 @@ function DetailPengirimanContent() {
               </div>
             ) : (
               <div className="flex flex-col items-end flex-grow w-full">
-                <span className="px-8 py-2 rounded-full text-xs font-black border bg-orange-50 border-orange-200 text-orange-600 mb-12">
+                <span className="px-6 md:px-8 py-1.5 md:py-2 rounded-full text-[10px] md:text-xs font-black border bg-orange-50 border-orange-200 text-orange-600 mb-8 md:mb-12">
                   {detailData.status?.toUpperCase()}
                 </span>
 
-                <div className="w-full mt-auto bg-[#F9FBF9] border-2 border-dashed border-gray-200 rounded-[30px] flex flex-col items-center justify-center p-10 text-center">
-                  <div className="w-20 h-20 bg-white border border-gray-100 shadow-sm rounded-[20px] flex items-center justify-center mb-6 text-[#4CAF50]">
-                    {dbStatus === "menunggu kurir" ? <Package size={36} strokeWidth={2.5} /> : <Truck size={36} strokeWidth={2.5} />}
+                <div className="w-full mt-auto bg-[#F9FBF9] border-2 border-dashed border-gray-200 rounded-[24px] md:rounded-[30px] flex flex-col items-center justify-center p-6 md:p-10 text-center">
+                  <div className="w-16 h-16 md:w-20 md:h-20 bg-white border border-gray-100 shadow-sm rounded-[16px] md:rounded-[20px] flex items-center justify-center mb-4 md:mb-6 text-[#4CAF50]">
+                    {dbStatus === "menunggu kurir" ? <Package size={32} strokeWidth={2.5} className="md:w-9 md:h-9" /> : <Truck size={32} strokeWidth={2.5} className="md:w-9 md:h-9" />}
                   </div>
-                  <h3 className="font-black text-gray-800 text-lg mb-3">
+                  <h3 className="font-black text-gray-800 text-base md:text-lg mb-2 md:mb-3">
                     {dbStatus === "menunggu kurir" ? "Menunggu Penjemputan" : "Paket Sedang Berjalan"}
                   </h3>
-                  <p className="text-[13px] text-gray-500 leading-relaxed max-w-[280px]">
+                  <p className="text-[12px] md:text-[13px] text-gray-500 leading-relaxed max-w-[280px]">
                     {dbStatus === "menunggu kurir" 
                       ? "Pastikan barangmu sudah dikemas dengan rapi dan aman ya. Kurir kami akan segera tiba!" 
                       : "Duduk manis! Paketmu sedang dalam penanganan kurir kami untuk diantar dengan selamat."}
@@ -300,8 +297,8 @@ function DetailPengirimanContent() {
         </div>
 
         {isSelesai && (
-          <div className="absolute top-16 right-16">
-            <span className="px-8 py-2 rounded-full text-xs font-black border bg-[#E8F5E9] border-green-200 text-green-600">
+          <div className="absolute top-6 right-6 md:top-16 md:right-16">
+            <span className="px-4 md:px-8 py-1.5 md:py-2 rounded-full text-[10px] md:text-xs font-black border bg-[#E8F5E9] border-green-200 text-green-600">
               SELESAI
             </span>
           </div>
@@ -311,33 +308,32 @@ function DetailPengirimanContent() {
 
       {/* --- AREA FORM PENILAIAN / RATING --- */}
       {isSelesai && (
-        <div className="w-full bg-white border border-black rounded-[40px] p-12 shadow-sm text-center mb-8">
+        <div className="w-full bg-white border border-black rounded-[24px] md:rounded-[40px] p-6 md:p-12 shadow-sm text-center mb-8">
           
-          {/* Validasi ketat membaca state detailData yang diperbarui secara langsung */}
           {detailData?.rating && detailData.rating > 0 ? (
             <div className="animate-in fade-in zoom-in duration-500">
-              <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Check size={32} strokeWidth={3} />
+              <div className="w-12 h-12 md:w-16 md:h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check size={28} strokeWidth={3} className="md:w-8 md:h-8" />
               </div>
-              <h3 className="font-black text-black mb-4">Terima Kasih atas Penilaianmu!</h3>
-              <div className="flex justify-center gap-2 mb-4">
+              <h3 className="font-black text-black mb-4 text-sm md:text-base">Terima Kasih atas Penilaianmu!</h3>
+              <div className="flex justify-center gap-1 md:gap-2 mb-4">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star 
                     key={star} 
-                    size={32} 
-                    className={star <= detailData.rating ? "fill-[#4CAF50] text-[#4CAF50]" : "text-gray-200"} 
+                    size={28} 
+                    className={`md:w-8 md:h-8 ${star <= detailData.rating ? "fill-[#4CAF50] text-[#4CAF50]" : "text-gray-200"}`} 
                   />
                 ))}
               </div>
-              <p className="text-gray-500 italic text-sm">
+              <p className="text-gray-500 italic text-xs md:text-sm">
                 "{detailData.review || "Tidak ada ulasan tertulis"}"
               </p>
             </div>
           ) : (
             <div className="animate-in fade-in duration-500">
-              <h3 className="font-black text-black mb-6">Paket sudah sampai! Yuk beri penilaian..</h3>
+              <h3 className="font-black text-black mb-4 md:mb-6 text-sm md:text-base">Paket sudah sampai! Yuk beri penilaian..</h3>
               
-              <div className="flex justify-center gap-3 mb-8">
+              <div className="flex justify-center gap-2 md:gap-3 mb-6 md:mb-8">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
@@ -348,8 +344,8 @@ function DetailPengirimanContent() {
                     className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
                   >
                     <Star 
-                      size={40} 
-                      className={`${
+                      size={36} 
+                      className={`md:w-10 md:h-10 ${
                         star <= (hoveredRating || rating) 
                           ? "fill-[#4CAF50] text-[#4CAF50]" 
                           : "text-gray-300"
@@ -363,13 +359,13 @@ function DetailPengirimanContent() {
                 placeholder="Tulis ulasan (opsional)..."
                 value={ulasan}
                 onChange={(e) => setUlasan(e.target.value)}
-                className="w-full bg-[#EBF5EB] border-transparent focus:border-[#4CAF50] focus:ring-0 rounded-[20px] p-5 text-sm mb-6 resize-none h-[120px] outline-none text-gray-700 placeholder:text-gray-400"
+                className="w-full bg-[#EBF5EB] border-transparent focus:border-[#4CAF50] focus:ring-0 rounded-[20px] p-4 md:p-5 text-sm mb-6 resize-none h-[100px] md:h-[120px] outline-none text-gray-700 placeholder:text-gray-400"
               ></textarea>
 
               <button 
                 onClick={submitRating}
                 disabled={rating === 0 || isSubmitting}
-                className={`w-full font-black py-5 rounded-[20px] text-lg transition-all active:scale-[0.98] ${
+                className={`w-full font-black py-4 md:py-5 rounded-[20px] text-base md:text-lg transition-all active:scale-[0.98] ${
                   rating > 0 && !isSubmitting
                     ? "bg-[#4CAF50] text-white shadow-lg shadow-green-100 hover:bg-[#43A047]" 
                     : "bg-[#E0E0E0] text-gray-400 cursor-not-allowed"

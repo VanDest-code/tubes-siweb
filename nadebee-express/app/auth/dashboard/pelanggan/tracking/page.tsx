@@ -117,9 +117,14 @@ function TrackingContent() {
             <ArrowLeft size={18} /> Kembali
           </button>
 
-          <div className="bg-white rounded-[32px] p-10 border border-gray-200 shadow-sm space-y-12">
-            <div className="flex justify-between items-start">
-              <div className="grid grid-cols-2 gap-x-20 gap-y-8">
+          {/* Murni menambahkan md:p-10 dan p-6 agar padding menyesuaikan mobile */}
+          <div className="bg-white rounded-[32px] p-6 md:p-10 border border-gray-200 shadow-sm space-y-12">
+            
+            {/* Flex-col untuk mobile, justify-between untuk desktop */}
+            <div className="flex flex-col md:flex-row justify-between items-start gap-4 md:gap-0">
+              
+              {/* Grid berubah dari 1 kolom (mobile) ke 2 kolom (desktop) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:gap-x-20 gap-y-8 w-full md:w-auto">
                 <div>
                   <p className="text-[14px] font-black text-gray-900 mb-4 tracking-tight">{searchQuery.toUpperCase()}</p>
                   <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Pengirim</p>
@@ -127,18 +132,20 @@ function TrackingContent() {
                   <p className="text-[11px] text-gray-400 font-bold mt-2 tracking-widest uppercase">Wilayah</p>
                   <p className="text-[14px] font-black text-gray-800">{currentData.wilayah}</p>
                 </div>
-                <div className="pt-8">
+                {/* Menghapus pt-8 di mobile agar tidak terlalu jauh jaraknya */}
+                <div className="pt-0 sm:pt-8">
                   <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Penerima</p>
                   <p className="text-[15px] font-black text-gray-900 leading-none">{currentData.penerima}</p>
                   <p className="text-[11px] text-gray-400 font-bold mt-2 tracking-widest uppercase">Ongkir</p>
                   <p className="text-[15px] font-black text-green-600 tracking-tighter">{currentData.ongkir}</p>
                 </div>
               </div>
-              <span className={`px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest border ${getStatusStyle(currentData.status)}`}>
+              <span className={`px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest border self-start md:self-auto ${getStatusStyle(currentData.status)}`}>
                 {currentData.status}
               </span>
             </div>
 
+            {/* Grid 1 kolom di mobile, 2 kolom di desktop */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div>
                 <h4 className="text-[12px] font-black text-gray-900 uppercase tracking-widest mb-8">Status</h4>
@@ -161,7 +168,7 @@ function TrackingContent() {
               {currentData.status !== "Menunggu Kurir" && (
                 <div className="space-y-4">
                   <p className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Informasi Kurir</p>
-                  <div className="bg-[#F8FAF8] rounded-[24px] p-6 border border-green-100 flex items-center gap-5 shadow-sm">
+                  <div className="bg-[#F8FAF8] rounded-[24px] p-4 sm:p-6 border border-green-100 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 shadow-sm">
                     <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#4CAF50] bg-white flex items-center justify-center shrink-0">
                       {currentData.kurir_avatar ? (
                         <img src={currentData.kurir_avatar} alt={`Foto ${currentData.kurir_nama}`} className="w-full h-full object-cover" />
@@ -173,7 +180,7 @@ function TrackingContent() {
                       <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-1">Pahlawan Paketmu</p>
                       <h4 className="text-[16px] font-black text-gray-900 leading-none mb-2">{currentData.kurir_nama || "Kurir Nadebee"}</h4>
                       
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         {currentData.kurir_plat && (
                             <span className="bg-white border border-gray-200 text-gray-600 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">
                             {currentData.kurir_plat}
@@ -191,7 +198,7 @@ function TrackingContent() {
               )}
 
               {currentData.status === "Selesai" && currentData.proof_image_url && (
-                <div className="space-y-4">
+                <div className="space-y-4 md:col-span-2">
                   <p className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Bukti Pengiriman</p>
                   <div className="rounded-[24px] overflow-hidden border-4 border-white shadow-lg h-64 relative">
                     <img src={currentData.proof_image_url} alt="Bukti" className="w-full h-full object-cover" />
@@ -215,6 +222,7 @@ function TrackingContent() {
           <p className="text-gray-500 text-[14px]">Masukkan nomor resi untuk mulai melacak</p>
         </div>
 
+        {/* Input box tidak diubah ukurannya, hanya memastikan text tidak meluber */}
         <form onSubmit={handleSearch} className="relative mb-12 flex gap-3">
           <input 
             type="text" 
@@ -225,12 +233,12 @@ function TrackingContent() {
               if (e.target.value === "") setStatus("idle"); 
             }}
             disabled={status === "loading"}
-            className={`flex-1 h-14 pl-6 pr-14 rounded-[22px] border-2 bg-white outline-none transition-all font-medium ${status === "error" ? 'border-red-400' : 'border-gray-200 focus:border-[#4CAF50]'}`}
+            className={`flex-1 h-14 pl-6 pr-4 md:pr-14 rounded-[22px] border-2 bg-white outline-none transition-all font-medium ${status === "error" ? 'border-red-400' : 'border-gray-200 focus:border-[#4CAF50]'}`}
           />
           <button 
             type="submit" 
             disabled={status === "loading"}
-            className="w-14 h-14 bg-[#4CAF50] text-white rounded-[20px] flex items-center justify-center shadow-lg shadow-green-200 hover:bg-green-600 active:scale-90 transition-all disabled:opacity-50"
+            className="w-14 h-14 bg-[#4CAF50] text-white rounded-[20px] flex items-center justify-center shrink-0 shadow-lg shadow-green-200 hover:bg-green-600 active:scale-90 transition-all disabled:opacity-50"
           >
             {status === "loading" ? <Loader2 size={22} className="animate-spin" /> : <Search size={22} />}
           </button>
@@ -238,18 +246,18 @@ function TrackingContent() {
 
         {status === "success" && currentData && (
           <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-            <div onClick={handleOpenDetail} className="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm relative cursor-pointer group hover:border-green-100 transition-all">
-              <div className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-900 group-hover:translate-x-1 transition-transform">
+            <div onClick={handleOpenDetail} className="bg-white rounded-[32px] p-6 md:p-8 border border-gray-100 shadow-sm relative cursor-pointer group hover:border-green-100 transition-all overflow-hidden">
+              <div className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 text-gray-900 group-hover:translate-x-1 transition-transform hidden sm:block">
                 <ArrowRight size={24} strokeWidth={2.5} />
               </div>
-              <div className="space-y-6">
-                <div className="flex items-center gap-6">
+              <div className="space-y-6 sm:pr-10">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
                   <h3 className="text-[15px] font-black text-gray-900 uppercase">{searchQuery.toUpperCase()}</h3>
-                  <span className={`px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusStyle(currentData.status)}`}>
+                  <span className={`px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border self-start sm:self-auto ${getStatusStyle(currentData.status)}`}>
                     {currentData.status}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-x-20">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-20">
                   <div>
                     <p className="text-[10px] text-gray-400 font-black uppercase mb-1">Pengirim</p>
                     <p className="text-[15px] font-black text-gray-900">{currentData.pengirim}</p>
@@ -273,14 +281,14 @@ function TrackingContent() {
 
         {status === "error" && (
           <div className="bg-white rounded-[32px] p-1 border-2 border-red-400 shadow-xl shadow-red-100 animate-in zoom-in duration-300">
-            <div className="bg-white rounded-[28px] border border-red-400 p-16 flex flex-col items-center text-center">
+            <div className="bg-white rounded-[28px] border border-red-400 p-8 md:p-16 flex flex-col items-center text-center">
               <div className="w-14 h-14 bg-red-500 text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-red-200">
                 <AlertCircle size={32} strokeWidth={3} />
               </div>
-              <h3 className="text-red-500 font-black text-[18px] mb-2 uppercase tracking-wide">
+              <h3 className="text-red-500 font-black text-[16px] md:text-[18px] mb-2 uppercase tracking-wide">
                 {errorMessage} 
               </h3>
-              <p className="text-gray-400 text-[15px] font-medium">Coba cek lagi ya!</p>
+              <p className="text-gray-400 text-[14px] md:text-[15px] font-medium">Coba cek lagi ya!</p>
             </div>
           </div>
         )}

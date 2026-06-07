@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react"; 
-import { supabase } from "@/lib/supabase"; // <-- TAMBAHAN IMPOR SUPABASE
+import { Loader2, Banknote } from "lucide-react"; // <-- Mengganti emoji dengan Banknote
+import { supabase } from "@/lib/supabase"; 
 
 export default function TunaiPage() { 
   const router = useRouter();
@@ -31,7 +31,6 @@ export default function TunaiPage() {
     }
 
     try {
-      // --- TAMBAHAN KUNCI: AMBIL EMAIL DI CLIENT SIDE ---
       const { data: { user } } = await supabase.auth.getUser();
 
       const response = await fetch("/api/pickup", {
@@ -42,7 +41,7 @@ export default function TunaiPage() {
             shippingCost: parseInt(savedCost || "20000"),
             courier_id: savedCourierId,
             payment_method: savedPayment || "Tunai",
-            customer_email: user?.email // <-- SISIPKAN EMAIL KE BACKEND
+            customer_email: user?.email 
         })
       });
 
@@ -62,14 +61,17 @@ export default function TunaiPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
-      <h2 className="text-2xl font-bold mb-2">Pembayaran Tunai</h2>
-      <p className="text-gray-500 mb-8 text-sm">Lakukan pembayaran langsung saat kurir datang</p>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 md:px-6">
+      <h2 className="text-xl md:text-2xl font-bold mb-2">Pembayaran Tunai</h2>
+      <p className="text-gray-500 mb-6 md:mb-8 text-xs md:text-sm">Lakukan pembayaran langsung saat kurir datang</p>
       
-      <div className="bg-white border border-black rounded-[30px] p-10 w-full max-w-md shadow-sm mb-8">
-        <span className="text-4xl mb-4 block">💵</span>
-        <p className="font-bold text-lg mb-1">Bayar saat kurir datang ya..</p>
-        <p className="text-gray-500">
+      <div className="bg-white border border-black rounded-[24px] md:rounded-[30px] p-6 md:p-10 w-full max-w-md shadow-sm mb-6 md:mb-8 flex flex-col items-center">
+        {/* Ikon Banknote menggantikan emoji 💵 */}
+        <div className="mb-4">
+           <Banknote size={48} className="text-[#4CAF50]" strokeWidth={1.5} />
+        </div>
+        <p className="font-bold text-base md:text-lg mb-1">Bayar saat kurir datang ya..</p>
+        <p className="text-gray-500 text-sm md:text-base">
           Siapkan uang tunai sebesar <span className="text-green-600 font-bold">Rp {totalBiaya}</span>
         </p>
       </div>
@@ -77,7 +79,7 @@ export default function TunaiPage() {
       <button 
         onClick={handleKirimData}
         disabled={isLoading}
-        className="w-full max-w-md bg-[#4CAF50] text-white py-4 rounded-2xl font-bold flex justify-center items-center"
+        className="w-full max-w-md bg-[#4CAF50] hover:bg-[#43A047] transition-all text-white py-3.5 md:py-4 rounded-[20px] md:rounded-2xl font-bold flex justify-center items-center shadow-lg text-sm md:text-base"
       >
         {isLoading ? <Loader2 className="animate-spin" /> : "Oke, saya mengerti"}
       </button>

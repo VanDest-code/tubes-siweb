@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Filter, Star, MapPin, Clock, Calendar, XCircle } from "lucide-react";
+import { Search, Filter, Star, MapPin, Clock, Calendar, XCircle, AlertCircle } from "lucide-react"; // <-- TAMBAHAN: AlertCircle
 import { supabase } from "@/lib/supabase";
 
 export default function RiwayatPage() {
   const [showFilter, setShowFilter] = useState(false);
   const [selectedRating, setSelectedRating] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchError, setSearchError] = useState(false); // <-- TAMBAHAN: State Error Pencarian
   
   // State Data Dinamis Supabase
   const [historyData, setHistoryData] = useState<any[]>([]);
@@ -110,6 +111,16 @@ export default function RiwayatPage() {
     return buttons;
   };
 
+  // --- TAMBAHAN: Fungsi Handle Search ---
+  const handleSearchClick = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) {
+      setSearchError(true);
+    } else {
+      setSearchError(false);
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20 px-4 md:px-0 pt-6">
       <div>
@@ -117,19 +128,29 @@ export default function RiwayatPage() {
         <p className="text-sm text-gray-500 font-medium">Menampilkan ringkasan seluruh pickup yang telah selesai</p>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-        <input
-          type="text"
-          placeholder="Cari resi, nama pengirim, penerima, atau barang..." // <-- REVISI PLACEHOLDER
-          className="w-full pl-12 pr-4 py-3 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 font-medium transition-all"
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setCurrentPage(1);
-          }}
-        />
-      </div>
+      {/* --- REVISI: Input dibungkus form dan ditambah tombol --- */}
+      <form onSubmit={handleSearchClick} className="flex gap-3 relative">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="Cari resi, nama pengirim, penerima, atau barang..."
+            className={`w-full pl-12 pr-4 py-3 bg-white border ${searchError ? 'border-red-400' : 'border-gray-300'} rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 font-medium transition-all`}
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+              if (e.target.value.trim() !== "") setSearchError(false);
+            }}
+          />
+        </div>
+        <button 
+          type="submit" 
+          className="bg-[#4CAF50] text-white px-6 md:px-8 rounded-xl font-bold hover:bg-[#43A047] transition-all shadow-md shrink-0"
+        >
+          Cari
+        </button>
+      </form>
 
       <div className="relative inline-block">
         <button
@@ -161,7 +182,20 @@ export default function RiwayatPage() {
 
       <div className="flex flex-col justify-between min-h-[480px]">
         <div className="space-y-6">
-          {loading ? (
+          {/* --- REVISI: Logika Pop-Up Error Ditambahkan di Sini --- */}
+          {searchError ? (
+            <div className="bg-white rounded-[32px] p-1 border-2 border-red-400 shadow-xl shadow-red-100 animate-in zoom-in duration-300">
+              <div className="bg-white rounded-[28px] border border-red-400 p-8 md:p-16 flex flex-col items-center text-center">
+                <div className="w-14 h-14 bg-red-500 text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-red-200">
+                  <AlertCircle size={32} strokeWidth={3} />
+                </div>
+                <h3 className="text-red-500 font-black text-[16px] md:text-[18px] mb-2 uppercase tracking-wide">
+                  KATA KUNCI WAJIB DIISI
+                </h3>
+                <p className="text-gray-400 text-[14px] md:text-[15px] font-medium">Silakan masukkan nomor resi, nama, atau barang untuk mencari.</p>
+              </div>
+            </div>
+          ) : loading ? (
             <div className="text-center py-12 text-[#4CAF50] font-bold animate-pulse">Memuat riwayat pekerjaanmu...</div>
           ) : filteredData.length > 0 ? (
             <>
@@ -233,7 +267,7 @@ export default function RiwayatPage() {
         </div>
 
         {/* --- PAGINATION --- */}
-        {!loading && filteredData.length > 0 && (
+        {!loading && filteredData.length > 0 && !searchError && (
           <div className="flex items-center justify-center gap-1 mt-10">
             <button
               type="button"
