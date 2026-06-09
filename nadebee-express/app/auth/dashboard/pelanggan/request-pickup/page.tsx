@@ -12,7 +12,7 @@ export default function RequestPickupPage() {
   const [formData, setFormData] = useState({
     senderName: "", senderPhone: "", senderAddress: "",
     receiverName: "", receiverPhone: "", receiverAddress: "",
-    itemType: "", destination: "", weight: "", note: "", 
+    itemType: "", customItemType: "", destination: "", weight: "", note: "", // <-- Tambah customItemType
     vehicleType: "Motor" 
   });
 
@@ -95,7 +95,30 @@ export default function RequestPickupPage() {
     if (!formData.itemType) newErrors.itemType = "Jenis wajib diisi";
     if (!formData.destination) newErrors.destination = "Wilayah wajib diisi";
     if (!formData.weight) newErrors.weight = "Berat wajib diisi";
+    // Validasi Tambahan
+    if (!formData.itemType) {
+      newErrors.itemType = "Jenis wajib diisi";
+    }
+    // Jika pilih "Lainnya" tapi field inputnya kosong
+    if (formData.itemType === "Lainnya" && !formData.customItemType) {
+      newErrors.customItemType = "Sebutkan detail barang";
+    }
     
+    if (!formData.destination) newErrors.destination = "Wilayah wajib diisi";
+    if (!formData.weight) newErrors.weight = "Berat wajib diisi";
+    
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length === 0) {
+      // BIKIN PINTAR: Kalau dia pilih "Lainnya", kita timpa itemType dengan teks aslinya
+      const finalData = { ...formData };
+      if (finalData.itemType === "Lainnya") {
+        finalData.itemType = finalData.customItemType; 
+      }
+      
+      sessionStorage.setItem("pickupData", JSON.stringify(finalData));
+      router.push("/auth/dashboard/pelanggan/request-pickup/pilih-kurir");
+    }
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
@@ -166,6 +189,21 @@ export default function RequestPickupPage() {
               setErrors(prev => ({...prev, itemType: ""}));
             }}
           />
+          {/* MUNCUL OTOMATIS JIKA PILIH LAINNYA */}
+          {formData.itemType === "Lainnya" && (
+            <div className="bg-white border border-black rounded-[25px] p-7 h-full flex flex-col justify-center shadow-sm animate-in fade-in duration-300">
+              <InputField 
+                label="Sebutkan Barang" 
+                placeholder="Contoh: Sepatu, Buku..." 
+                value={formData.customItemType} 
+                error={errors.customItemType} 
+                onChange={(v: string) => {
+                  setFormData({...formData, customItemType: v});
+                  setErrors(prev => ({...prev, customItemType: ""}));
+                }} 
+              />
+            </div>
+          )}
           <DropdownField 
             label="Wilayah Tujuan" 
             placeholder={formData.destination || "Pilih wilayah"} 

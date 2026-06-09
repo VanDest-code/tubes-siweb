@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, Clock, Star, Package, Truck, User, Phone } from "lucide-react"; 
+import { Check, Clock, Star, Package, Truck, User, Phone, XCircle, Frown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +24,6 @@ function DetailPengirimanContent() {
   const [detailData, setDetailData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // State untuk Manajemen Rating & Ulasan Interaktif
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [ulasan, setUlasan] = useState("");
@@ -60,9 +59,6 @@ function DetailPengirimanContent() {
     fetchDetail();
   }, [resiQuery]);
 
-  // ==========================================
-  // LOGIKA INSERT RATING KE SUPABASE
-  // ==========================================
   const submitRating = async () => {
     if (rating === 0 || !detailData) return;
 
@@ -118,8 +114,10 @@ function DetailPengirimanContent() {
     );
   }
 
+  // --- LOGIKA STATUS FIX ---
   const dbStatus = (detailData.status || "").toLowerCase().trim();
   const isSelesai = dbStatus === "selesai";
+  const isDitolak = dbStatus === "ditolak" || dbStatus === "dibatalkan";
   
   let currentStatusIndex = STATUS_FLOW.findIndex(s => s.toLowerCase() === dbStatus);
   if (currentStatusIndex === -1) {
@@ -175,13 +173,11 @@ function DetailPengirimanContent() {
           <div className="space-y-8 md:space-y-12">
             
             <div className="flex flex-col sm:flex-row gap-4 w-full">
-              {/* Box Nomor Resi */}
               <div className="bg-[#E8F5E9]/60 border border-[#4CAF50]/30 rounded-[20px] p-5 md:p-6 flex-1 flex flex-col justify-center">
                 <p className="text-gray-400 text-[11px] md:text-[13px] font-bold mb-2 uppercase tracking-wider">Nomor Resi</p>
                 <p className="text-[#4CAF50] font-black text-lg md:text-[22px] tracking-tight">{detailData.resi_number}</p>
               </div>
 
-              {/* Box Info Kurir */}
               <div className="bg-white border border-gray-200 rounded-[20px] p-4 md:p-5 flex-1 shadow-sm flex flex-col justify-center">
                 <p className="text-gray-400 text-[10px] md:text-[11px] font-bold mb-3 uppercase tracking-widest">
                   Info Kurir
@@ -197,12 +193,14 @@ function DetailPengirimanContent() {
                         {detailData.couriers.username}
                       </p>
                       <p className="text-[11px] md:text-[12px] font-bold text-[#4CAF50] mt-1 flex items-center gap-1">
-                        📞 {detailData.couriers.phone || "-"}
+                        <Phone size={12} strokeWidth={2.5} /> {detailData.couriers.phone || "-"}
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-[11px] md:text-[12px] font-medium text-gray-400 italic">Mencari kurir terdekat...</p>
+                  <p className="text-[11px] md:text-[12px] font-medium text-gray-400 italic">
+                    {isDitolak ? "Kurir dibatalkan" : "Mencari kurir terdekat..."}
+                  </p>
                 )}
               </div>
             </div>
@@ -229,30 +227,49 @@ function DetailPengirimanContent() {
             <div className="space-y-6 md:space-y-8 pt-4">
               <h3 className="text-[16px] font-black text-black">Status</h3>
               <div className="relative pl-2 space-y-10 md:space-y-12">
-                <div className="absolute left-[20px] top-4 bottom-4 w-[1px] bg-gray-300"></div>
-
-                {trackingStatus.map((item, idx) => (
-                  <div key={idx} className="flex gap-6 md:gap-10 relative items-start">
-                    <div className={`z-10 w-10 h-10 shrink-0 rounded-xl flex items-center justify-center border-2 transition-all duration-300 ${
-                      item.status === "completed" ? "bg-[#E8F5E9] border-[#4CAF50] text-[#4CAF50]" :
-                      item.status === "active" ? "bg-[#4CAF50] border-[#4CAF50] text-white shadow-lg shadow-green-100" :
-                      "bg-[#E0E0E0] border-[#E0E0E0] text-gray-500"
-                    }`}>
-                      {item.status === "pending" ? <Clock size={20} /> : <Check size={20} strokeWidth={3} />}
+                
+                {/* TIMELINE RENDER BERDASARKAN STATUS DITOLAK ATAU TIDAK */}
+                {isDitolak ? (
+                  <div className="flex gap-6 md:gap-10 relative items-start animate-in fade-in slide-in-from-left-2 duration-300">
+                    <div className="z-10 w-10 h-10 shrink-0 rounded-xl flex items-center justify-center border-2 transition-all duration-300 bg-red-50 border-red-500 text-red-500 shadow-lg shadow-red-100">
+                      <XCircle size={20} strokeWidth={3} />
                     </div>
-
                     <div className="pt-1">
-                      <p className={`text-[14px] md:text-[16px] font-black leading-none mb-1.5 md:mb-2 ${
-                        item.status === "pending" ? "text-gray-400" : "text-black"
-                      }`}>
-                        {item.label}
+                      <p className="text-[14px] md:text-[16px] font-black leading-none mb-1.5 md:mb-2 text-red-600">
+                        Pengiriman Ditolak
                       </p>
-                      <p className="text-[11px] md:text-[12px] text-gray-400 font-medium leading-relaxed max-w-[320px]">
-                        {item.desc}
+                      <p className="text-[11px] md:text-[12px] text-red-400 font-medium leading-relaxed max-w-[320px]">
+                        Mohon maaf, kurir tidak dapat memproses pesanan ini atau pesanan telah dibatalkan.
                       </p>
                     </div>
                   </div>
-                ))}
+                ) : (
+                  <>
+                    <div className="absolute left-[20px] top-4 bottom-4 w-[1px] bg-gray-300"></div>
+                    {trackingStatus.map((item, idx) => (
+                      <div key={idx} className="flex gap-6 md:gap-10 relative items-start">
+                        <div className={`z-10 w-10 h-10 shrink-0 rounded-xl flex items-center justify-center border-2 transition-all duration-300 ${
+                          item.status === "completed" ? "bg-[#E8F5E9] border-[#4CAF50] text-[#4CAF50]" :
+                          item.status === "active" ? "bg-[#4CAF50] border-[#4CAF50] text-white shadow-lg shadow-green-100" :
+                          "bg-[#E0E0E0] border-[#E0E0E0] text-gray-500"
+                        }`}>
+                          {item.status === "pending" ? <Clock size={20} /> : <Check size={20} strokeWidth={3} />}
+                        </div>
+
+                        <div className="pt-1">
+                          <p className={`text-[14px] md:text-[16px] font-black leading-none mb-1.5 md:mb-2 ${
+                            item.status === "pending" ? "text-gray-400" : "text-black"
+                          }`}>
+                            {item.label}
+                          </p>
+                          <p className="text-[11px] md:text-[12px] text-gray-400 font-medium leading-relaxed max-w-[320px]">
+                            {item.desc}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             </div>
 
@@ -271,10 +288,34 @@ function DetailPengirimanContent() {
                   />
                 </div>
               </div>
+            ) : isDitolak ? (
+              <div className="flex flex-col items-center justify-center flex-grow w-full mt-8 md:mt-0 animate-in fade-in duration-500">
+                <div className="w-full bg-red-50 border-2 border-dashed border-red-200 rounded-[24px] md:rounded-[30px] flex flex-col items-center justify-center p-8 md:p-12 text-center h-[280px] md:h-[360px]">
+                  <div className="mb-4 md:mb-6 text-red-400">
+                    <Frown size={64} strokeWidth={2} />
+                  </div>
+                  <h3 className="font-black text-red-600 text-lg md:text-xl mb-2 md:mb-3">
+                    Yah, pesananmu ditolak.
+                  </h3>
+                  <p className="text-[12px] md:text-[14px] text-red-400 font-medium leading-relaxed max-w-[280px]">
+                    Kurir tidak dapat memproses pesanan ini. Silakan buat permohonan request pickup baru ya.
+                  </p>
+                </div>
+              </div>
             ) : (
               <div className="flex flex-col items-end flex-grow w-full">
-                <span className="px-6 md:px-8 py-1.5 md:py-2 rounded-full text-[10px] md:text-xs font-black border bg-orange-50 border-orange-200 text-orange-600 mb-8 md:mb-12">
-                  {detailData.status?.toUpperCase()}
+                <span className={`px-6 md:px-8 py-1.5 md:py-2 rounded-full text-[10px] md:text-xs font-black border mb-8 md:mb-12 ${
+                  dbStatus === "selesai" 
+                    ? "bg-[#E8F5E9] border-green-200 text-green-600" 
+                    : dbStatus === "dalam perjalanan"
+                    ? "bg-purple-50 border-purple-200 text-purple-600"
+                    : dbStatus === "paket sudah diambil"
+                    ? "bg-blue-50 border-blue-200 text-blue-600"
+                    : dbStatus === "ditolak" || dbStatus === "dibatalkan"
+                    ? "bg-red-50 border-red-200 text-red-600"
+                    : "bg-orange-50 border-orange-200 text-orange-600"
+                }`}>
+                  {(detailData.status || "").toUpperCase()}
                 </span>
 
                 <div className="w-full mt-auto bg-[#F9FBF9] border-2 border-dashed border-gray-200 rounded-[24px] md:rounded-[30px] flex flex-col items-center justify-center p-6 md:p-10 text-center">
@@ -306,7 +347,6 @@ function DetailPengirimanContent() {
 
       </div>
 
-      {/* --- AREA FORM PENILAIAN / RATING --- */}
       {isSelesai && (
         <div className="w-full bg-white border border-black rounded-[24px] md:rounded-[40px] p-6 md:p-12 shadow-sm text-center mb-8">
           

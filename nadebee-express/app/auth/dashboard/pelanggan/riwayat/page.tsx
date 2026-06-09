@@ -81,7 +81,8 @@ export default function RiwayatPickupPage() {
             status: d.status,
             rute: `${d.sender_name} → ${d.receiver_name}`,
             detail: `${d.destination_city} | ${d.item_category} | ${d.weight_range}`,
-            tanggal: d.created_at.split("T")[0] 
+            tanggal: d.created_at.split("T")[0],
+            tanggal_raw: d.created_at // <-- Simpan format asli untuk UI
           }));
           setDataRiwayatAwal(formattedData);
         }
@@ -141,6 +142,19 @@ export default function RiwayatPickupPage() {
     } else {
       setSearchError(false);
     }
+  };
+
+  // --- FORMATTER TANGGAL CANTIK ---
+  const formatTanggalCard = (dateString: string) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }); 
   };
 
   const countAktif = dataRiwayatAwal.filter(i => {
@@ -233,7 +247,6 @@ export default function RiwayatPickupPage() {
         </div>
       )}
 
-      {/* --- LEBAR DISAMAKAN: max-w-[1100px] --- */}
       <section className="max-w-[1100px] mx-auto pt-12 px-6">
         
         <div className="mb-10 text-left">
@@ -387,11 +400,18 @@ export default function RiwayatPickupPage() {
                 return (
                   <div 
                     key={item.id}
-                    className="bg-white border border-gray-200 rounded-[30px] p-8 shadow-sm flex flex-col hover:shadow-md hover:border-green-200 transition-all cursor-pointer gap-0"
+                    className="bg-white border border-gray-200 rounded-[30px] p-8 shadow-sm flex flex-col hover:shadow-md hover:border-green-200 transition-all cursor-pointer gap-0 relative"
                     onClick={() => router.push(`/auth/dashboard/pelanggan/riwayat/detail-pengiriman?resi=${item.id}`)}
                   >
                     
-                    <div className="flex flex-col md:flex-row md:items-center justify-between w-full">
+                    {/* --- PILL TANGGAL DI POJOK KANAN ATAS --- */}
+                    <div className="absolute top-6 right-6 md:top-8 md:right-8">
+                      <span className="text-[10px] md:text-[11px] font-bold text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+                        {formatTanggalCard(item.tanggal_raw)}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row md:items-center justify-between w-full mt-4 md:mt-0">
                       <div className="flex items-center gap-6 w-full">
                         
                         <div className="flex flex-col justify-center">
@@ -424,6 +444,8 @@ export default function RiwayatPickupPage() {
                           ? "bg-purple-50 border-purple-200 text-purple-600"
                           : (item.status || "").toLowerCase().trim() === "paket sudah diambil"
                           ? "bg-blue-50 border-blue-200 text-blue-600"
+                          : (item.status || "").toLowerCase().trim() === "ditolak" || (item.status || "").toLowerCase().trim() === "dibatalkan"
+                          ? "bg-red-50 border-red-200 text-red-600"
                           : "bg-orange-50 border-orange-200 text-orange-600"
                       }`}>
                         {(item.status || "").toUpperCase()}
@@ -456,7 +478,7 @@ export default function RiwayatPickupPage() {
                     {dataRiwayatAwal.length === 0 ? "Belum Ada Data Riwayat." : "Tidak Ada Riwayat"}
                   </p>
                   <p className="text-gray-400 font-medium text-sm">
-                    {dataRiwayatAwal.length === 0 ? "Kamu belum pernah melakukan request pickup." : "Data tidak ditemukan untuk kata kunci tersebut. Silahkan coba lagi."}
+                    {dataRiwayatAwal.length === 0 ? "Kamu belum pernah melakukan request pickup." : "Data tidak ditemukan untuk filter tersebut. Silahkan coba lagi."}
                   </p>
                 </div>
               </div>

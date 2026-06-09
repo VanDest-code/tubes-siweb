@@ -27,34 +27,49 @@ export default function TunaiPage() {
     if (!savedData) {
       alert("Data form hilang, silakan isi ulang.");
       router.push("/auth/dashboard/pelanggan/request-pickup");
+      setIsLoading(false);
       return;
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // MENGGUNAKAN GETSESSION AGAR LEBIH STABIL DI CLIENT SIDE
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session?.user?.email;
+      const userId = session?.user?.id;
+
+      // Cegah pengiriman jika email benar-benar hilang dari browser
+      if (!userEmail) {
+        alert("Sesi login terputus. Silakan logout dan login kembali.");
+        setIsLoading(false);
+        return;
+      }
+
+      const payload = {
+        ...JSON.parse(savedData),
+        shippingCost: parseInt(savedCost || "20000"),
+        courier_id: savedCourierId,
+        payment_method: savedPayment || "Tunai", // Sesuaikan dengan halaman (Tunai / Non Tunai)
+        customer_email: userEmail,
+        user_id: userId
+      };
 
       const response = await fetch("/api/pickup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            ...JSON.parse(savedData),
-            shippingCost: parseInt(savedCost || "20000"),
-            courier_id: savedCourierId,
-            payment_method: savedPayment || "Tunai",
-            customer_email: user?.email 
-        })
+        body: JSON.stringify(payload)
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        sessionStorage.clear();
+        sessionStorage.clear(); 
         router.push(`/auth/dashboard/pelanggan/request-pickup/berhasil?resi=${result.resi}`);
       } else {
-        alert("Terjadi kesalahan sistem!");
+        const errorMessage = result.error || result.message || "Terjadi kesalahan pada sistem database.";
+        alert(`Gagal: ${errorMessage}`);
       }
     } catch (error) {
-      alert("Gagal menghubungi server.");
+      alert("Gagal menghubungi server. Pastikan koneksi internet aman.");
     } finally {
       setIsLoading(false);
     }
