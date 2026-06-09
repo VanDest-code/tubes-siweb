@@ -67,7 +67,7 @@ const SidebarKurir = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => voi
 
       {/* 2. SIDEBAR CONTAINER */}
       <aside 
-        className={`fixed inset-y-0 left-0 z-[50] w-64 bg-white border-r border-gray-100 flex flex-col p-6 transition-transform duration-500 ease-in-out shadow-lg ${
+        className={`fixed inset-y-0 left-0 z-[50] w-[280px] bg-white border-r border-gray-100 flex flex-col p-6 transition-transform duration-500 ease-in-out shadow-lg ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

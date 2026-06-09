@@ -1,4 +1,5 @@
 import { Poppins } from 'next/font/google';
+import { Metadata } from 'next';
 import './globals.css';
 
 const poppins = Poppins({ 
@@ -7,13 +8,17 @@ const poppins = Poppins({
   variable: '--font-poppins' 
 });
 
+export const metadata: Metadata = {
+  title: "Nadebee Express",
+  description: "Layanan pengiriman dan pickup paket terpercaya.",
+};
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    // Tambahkan suppressHydrationWarning di tag html ini juga
     <html lang="id" suppressHydrationWarning>
       <body 
         className={`${poppins.variable} font-poppins antialiased`}

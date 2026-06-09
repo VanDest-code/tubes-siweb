@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Trash2, Search, Calendar, Package, ChevronRight, ChevronLeft } from "lucide-react"; 
+import { Trash2, Search, Calendar, Package, ChevronRight, ChevronLeft, AlertCircle, XCircle } from "lucide-react"; 
 
 export default function RiwayatPickupPage() {
   const router = useRouter();
@@ -12,6 +12,7 @@ export default function RiwayatPickupPage() {
   const [activeTab, setActiveTab] = useState<"Aktif" | "Selesai">("Aktif");
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchError, setSearchError] = useState(false); 
   
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 3; 
@@ -20,13 +21,11 @@ export default function RiwayatPickupPage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
 
-  // --- STATE UNTUK FITUR DELETE ---
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
   const [resiToDelete, setResiToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // --- LOGIKA KALENDER DINAMIS ---
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -135,6 +134,15 @@ export default function RiwayatPickupPage() {
     }
   };
 
+  const handleSearchClick = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) {
+      setSearchError(true);
+    } else {
+      setSearchError(false);
+    }
+  };
+
   const countAktif = dataRiwayatAwal.filter(i => {
     const s = (i.status || "").toLowerCase().trim();
     return s !== "selesai" && s !== "ditolak" && s !== "dibatalkan";
@@ -151,14 +159,12 @@ export default function RiwayatPickupPage() {
     const isHistory = dbStatus === "selesai" || dbStatus === "ditolak" || dbStatus === "dibatalkan";
     const matchTab = activeTab === "Aktif" ? !isHistory : isHistory;
     
-    // --- REVISI LOGIKA PENCARIAN (UNIVERSAL SEARCH) ---
-    // Kini mencari berdasarkan Resi, Status, Nama Pengirim, Nama Penerima, dan Nama Barang!
     const query = searchQuery.toLowerCase().trim();
     const matchQuery = 
       dbStatus.includes(query) || 
       item.id.toLowerCase().includes(query) ||
-      item.rute.toLowerCase().includes(query) || // Menyapu nama pengirim & penerima
-      item.detail.toLowerCase().includes(query); // Menyapu jenis barang & kota
+      item.rute.toLowerCase().includes(query) || 
+      item.detail.toLowerCase().includes(query); 
                         
     const matchDate = selectedDate ? item.tanggal === selectedDate : true;
     
@@ -180,7 +186,7 @@ export default function RiwayatPickupPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F4F9F4] font-sans pb-20">
+    <main className="min-h-screen bg-[#F4F9F4] font-sans pb-20 w-full overflow-x-hidden">
       
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -227,43 +233,51 @@ export default function RiwayatPickupPage() {
         </div>
       )}
 
-      <section className="max-w-[1200px] mx-auto pt-12 px-6">
+      {/* --- LEBAR DISAMAKAN: max-w-[1100px] --- */}
+      <section className="max-w-[1100px] mx-auto pt-12 px-6">
         
-        <div className="mb-10">
+        <div className="mb-10 text-left">
           <h2 className="text-[28px] font-bold text-[#1A1A1A]">Riwayat Pickup</h2>
-          <p className="text-gray-500 text-sm">Berikut adalah semua riwayat permohonan pickup mu</p>
+          <p className="text-gray-500 text-sm mt-1">Berikut adalah semua riwayat permohonan pickup mu</p>
         </div>
 
         <div className="space-y-4 mb-6 relative">
-          <div className="relative w-full">
-            <span className="absolute inset-y-0 left-4 flex items-center text-gray-400">
-              <Search size={20} /> 
-            </span>
-            <input
-              type="text"
-              placeholder='Cari resi, nama, atau barang...' 
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1); 
-              }}
-              className="w-full bg-white border border-gray-300 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-[#4CAF50] transition-colors"
-            />
-          </div>
+          
+          <form onSubmit={handleSearchClick} className="flex gap-3 relative w-full">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                placeholder='Cari resi, nama, atau barang...' 
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1); 
+                  if (e.target.value.trim() !== "") setSearchError(false);
+                }}
+                className={`w-full bg-white border ${searchError ? 'border-red-400' : 'border-gray-300'} rounded-xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-[#4CAF50] transition-colors`}
+              />
+            </div>
+            <button 
+              type="submit" 
+              className="bg-[#4CAF50] text-white px-8 rounded-xl font-bold hover:bg-[#43A047] transition-all shadow-md shrink-0 text-base flex items-center justify-center min-w-[80px]"
+            >
+              Cari
+            </button>
+          </form>
 
-          <div className="relative inline-block" ref={calendarRef}>
+          <div className="relative inline-block w-full md:w-auto" ref={calendarRef}>
             <button 
               type="button"
               onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-              className="flex items-center gap-2 bg-white border border-gray-400 rounded-xl px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              className="w-full md:w-auto flex items-center justify-center md:justify-start gap-2 bg-white border border-gray-400 rounded-xl px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
             >
               <Calendar size={14} className="text-[#4CAF50]"/> 
               {selectedDate ? `Tanggal: ${selectedDate}` : "Filter Tanggal"}
             </button>
 
             {isCalendarOpen && (
-              <div className="absolute left-0 mt-2 bg-white border border-gray-200 rounded-[24px] p-5 shadow-xl z-50 w-[320px] animate-in fade-in zoom-in-95 duration-150">
-                
+              <div className="absolute left-0 right-0 md:right-auto mt-2 bg-white border border-gray-200 rounded-[24px] p-5 shadow-xl z-50 w-full md:w-[320px] animate-in fade-in zoom-in-95 duration-150 mx-auto">
                 <div className="flex justify-between items-center mb-4 px-1">
                   <button type="button" onClick={handlePrevMonth} className="text-gray-600 hover:bg-gray-100 w-7 h-7 rounded-full flex items-center justify-center text-sm"><ChevronLeft size={18}/></button>
                   <div className="flex gap-2">
@@ -307,7 +321,7 @@ export default function RiwayatPickupPage() {
                           setIsCalendarOpen(false);
                           setCurrentPage(1); 
                         }}
-                        className={`p-2 rounded-lg transition-all font-bold ${
+                        className={`p-2 rounded-lg transition-all font-bold text-xs ${
                           isSelected
                             ? "bg-green-600 text-white"
                             : "text-gray-700 hover:bg-gray-100"
@@ -323,7 +337,7 @@ export default function RiwayatPickupPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mb-8">
+        <div className="flex items-center gap-2 mb-8 justify-start">
           <button
             onClick={() => { setActiveTab("Aktif"); setCurrentPage(1); }}
             className={`flex items-center gap-3 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
@@ -351,8 +365,21 @@ export default function RiwayatPickupPage() {
 
         <div className="flex flex-col justify-between min-h-[480px]">
           <div className="space-y-4">
-            {loading ? (
-              <div className="text-center py-12 text-gray-400 font-bold animate-pulse">Memuat data riwayat...</div>
+            
+            {searchError ? (
+              <div className="bg-white rounded-[32px] p-1 border-2 border-red-400 shadow-xl shadow-red-100 animate-in zoom-in duration-300">
+                <div className="bg-white rounded-[28px] border border-red-400 p-8 md:p-16 flex flex-col items-center text-center">
+                  <div className="w-14 h-14 bg-red-500 text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-red-200">
+                    <AlertCircle size={32} strokeWidth={3} className="md:w-8 md:h-8" />
+                  </div>
+                  <h3 className="text-red-500 font-black text-[18px] mb-2 uppercase tracking-wide">
+                    KATA KUNCI WAJIB DIISI
+                  </h3>
+                  <p className="text-gray-400 text-[15px] font-medium max-w-xs mx-auto">Silakan masukkan nomor resi, nama, atau barang untuk mencari.</p>
+                </div>
+              </div>
+            ) : loading ? (
+              <div className="text-center py-12 text-gray-400 font-bold animate-pulse text-base">Memuat data riwayat...</div>
             ) : dataPerHalaman.length > 0 ? (
               dataPerHalaman.map((item) => {
                 const isMenungguKurir = (item.status || "").toLowerCase().trim() === "menunggu kurir";
@@ -360,26 +387,36 @@ export default function RiwayatPickupPage() {
                 return (
                   <div 
                     key={item.id}
-                    className="bg-white border border-gray-200 rounded-[30px] p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between hover:shadow-md hover:border-green-200 transition-all cursor-pointer gap-6 md:gap-0"
+                    className="bg-white border border-gray-200 rounded-[30px] p-8 shadow-sm flex flex-col hover:shadow-md hover:border-green-200 transition-all cursor-pointer gap-0"
                     onClick={() => router.push(`/auth/dashboard/pelanggan/riwayat/detail-pengiriman?resi=${item.id}`)}
                   >
-                    <div className="flex items-center gap-6">
-                      <div className="flex flex-col justify-center">
-                        <span className="font-bold text-lg mb-2">{item.id}</span>
-                        <div className="bg-[#E8F5E9]/60 w-14 h-14 flex items-center justify-center rounded-xl border border-green-200 shadow-sm shrink-0">
-                          <Package size={28} className="text-[#4CAF50]" /> 
+                    
+                    <div className="flex flex-col md:flex-row md:items-center justify-between w-full">
+                      <div className="flex items-center gap-6 w-full">
+                        
+                        <div className="flex flex-col justify-center">
+                          <span className="font-bold text-lg mb-2">{item.id}</span>
+                          <div className="bg-[#E8F5E9]/60 w-14 h-14 flex items-center justify-center rounded-xl border border-green-200 shadow-sm shrink-0">
+                            <Package size={28} className="text-[#4CAF50]" /> 
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="pt-6 text-[15px]">
-                        <p className="text-gray-600 font-medium">{item.rute}</p>
-                        <p className="text-gray-400 mt-1 text-[13px]">{item.detail}</p>
+                        <div className="pt-6 text-[15px] flex-1">
+                          <p className="text-gray-600 font-medium leading-normal">{item.rute}</p>
+                          <p className="text-gray-400 mt-1 text-[13px] leading-normal">{item.detail}</p>
+                        </div>
+                        
+                        <button
+                          type="button"
+                          className="text-green-600 font-bold cursor-pointer hover:translate-x-1 transition-transform p-2 hidden md:block shrink-0"
+                        >
+                          <ChevronRight size={24} /> 
+                        </button>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between md:justify-end md:gap-6 w-full md:w-auto mt-4 md:mt-0">
+                    <div className="flex items-center justify-between w-full mt-4 pt-4 border-t border-gray-100 md:border-none md:pt-0 md:mt-2">
                       
-                      {/* === PENAMBAHAN .toUpperCase() PADA RENDER STATUS === */}
                       <span className={`px-8 py-2 rounded-full text-xs font-bold border text-center whitespace-nowrap ${
                         (item.status || "").toLowerCase().trim() === "selesai" 
                           ? "bg-[#E8F5E9] border-green-200 text-green-600" 
@@ -406,25 +443,27 @@ export default function RiwayatPickupPage() {
                         </button>
                       )}
                       
-                      <button
-                        type="button"
-                        className="text-green-600 font-bold cursor-pointer hover:translate-x-1 transition-transform p-2 hidden md:block shrink-0"
-                      >
-                        <ChevronRight size={24} /> 
-                      </button>
-
                     </div>
+
                   </div>
                 );
               })
             ) : (
-              <div className="text-center py-12 text-gray-400 bg-white border border-dashed border-gray-300 rounded-[30px]">
-                Tidak ada data riwayat dengan pencarian ini.
+              <div className="flex flex-col items-center justify-center py-16 bg-white border-2 border-dashed border-gray-200 rounded-[32px] space-y-4">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300"><XCircle size={48} /></div>
+                <div className="text-center px-4">
+                  <p className="text-gray-600 font-black text-xl mb-1">
+                    {dataRiwayatAwal.length === 0 ? "Belum Ada Data Riwayat." : "Tidak Ada Riwayat"}
+                  </p>
+                  <p className="text-gray-400 font-medium text-sm">
+                    {dataRiwayatAwal.length === 0 ? "Kamu belum pernah melakukan request pickup." : "Data tidak ditemukan untuk kata kunci tersebut. Silahkan coba lagi."}
+                  </p>
+                </div>
               </div>
             )}
           </div>
 
-          {!loading && dataTerfilter.length > 0 && (
+          {!loading && dataTerfilter.length > 0 && !searchError && (
             <div className="flex items-center justify-center gap-1 mt-8">
               <button
                 type="button"
@@ -449,7 +488,7 @@ export default function RiwayatPickupPage() {
                     onClick={() => setCurrentPage(page)}
                     className={`w-10 h-10 font-bold text-sm transition-all border-y border-x border-gray-200 flex items-center justify-center ${
                       isSelected
-                        ? "bg-green-600 text-white border-green-600" 
+                        ? "bg-green-600 text-white border-green-600 shadow-sm" 
                         : "bg-white text-gray-700 hover:bg-gray-50"
                     }`}
                   >
