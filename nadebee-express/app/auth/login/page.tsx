@@ -30,14 +30,12 @@ export default function UnifiedLogin() {
     
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    // Validasi Umum (Email)
     if (!email) {
       newErrors.email = "Email wajib diisi";
     } else if (!emailRegex.test(email)) {
       newErrors.email = activeTab === 'pelanggan' ? "Format salah! cth: natalie@gmail.com" : "Format salah! cth: kurir@gmail.com";
     }
 
-    // Validasi Spesifik Role
     if (activeTab === 'pelanggan') {
       if (!password) {
         newErrors.password = "Password wajib diisi";
@@ -58,43 +56,45 @@ export default function UnifiedLogin() {
       return;
     }
 
-    // Eksekusi Supabase Berdasarkan Role
     try {
       if (activeTab === 'pelanggan') {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw new Error("Email atau Password salah!");
         
-        // Simpan nama asli pelanggan
         setRealName(data.user?.user_metadata?.username || ""); 
-        
         sessionStorage.removeItem("loggedInCourierId"); 
+        
+        // --- SIMPAN TIKET & ROLE PELANGGAN ---
         document.cookie = "nadebee-auth-token=true; path=/; max-age=86400";
+        document.cookie = "nadebee-role=pelanggan; path=/; max-age=86400";
+        
       } else {
         await supabase.auth.signOut(); 
 
         const { data, error } = await supabase
           .from("couriers")
-          .select("id, username") // <-- Tambahkan 'username' di select ini
+          .select("id, username") 
           .eq("email", email)
           .eq("kode_kurir", kurirCode)
           .single();
 
         if (error || !data) throw new Error("Email atau Kode Kurir salah!");
         
-        // Simpan nama asli kurir
         setRealName(data.username); 
-        
         sessionStorage.setItem("loggedInCourierId", data.id);
+        
+        // --- SIMPAN TIKET & ROLE KURIR ---
         document.cookie = "nadebee-auth-token=true; path=/; max-age=86400";
+        document.cookie = "nadebee-role=kurir; path=/; max-age=86400";
       }
 
       setShowSuccess(true);
-} catch (err: any) {
-  setErrors({ auth: err.message || "Terjadi kesalahan sistem." });
-} finally {
-  setLoading(false);
-}
-}; // <--- INI KURUNG KURAWAL YANG TADI TIDAK SENGAJA TERHAPUS
+    } catch (err: any) {
+      setErrors({ auth: err.message || "Terjadi kesalahan sistem." });
+    } finally {
+      setLoading(false);
+    }
+  }; // <--- INI KURUNG KURAWAL YANG TADI TIDAK SENGAJA TERHAPUS
 
   const displayName = email ? email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1) : "";
 
