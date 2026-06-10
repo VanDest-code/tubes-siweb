@@ -216,12 +216,17 @@ export default function UnifiedLogin() {
             <p className="text-gray-500 text-xs md:text-sm mb-6 text-center font-medium">
               Selamat datang <span className="font-bold text-gray-800">{realName || displayName}</span>{activeTab === 'kurir' ? ' dan selamat bekerja!' : ''}
             </p>
-            <Link 
-              href={activeTab === 'pelanggan' ? "/auth/dashboard/pelanggan" : "/auth/dashboard/kurir"} 
+            
+            {/* UBAY DARI <Link> MENJADI <button> DENGAN window.location.href */}
+            <button 
+              onClick={() => {
+                window.location.href = activeTab === 'pelanggan' ? "/auth/dashboard/pelanggan" : "/auth/dashboard/kurir";
+              }}
               className="w-full bg-[#4CAF50] text-white font-bold py-3 rounded-xl text-center shadow-lg hover:bg-green-600 transition-colors text-sm"
             >
               Lanjutkan
-            </Link>
+            </button>
+            
           </div>
         </div>
       )}
