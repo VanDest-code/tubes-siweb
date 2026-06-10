@@ -44,13 +44,17 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   };
 
   const executeLogout = async () => {
-    // 1. Hancurkan karcis keamanan Middleware
+    // 1. Hancurkan karcis keamanan Middleware DAN stempel Role
     document.cookie = "nadebee-auth-token=; path=/; max-age=0";
+    document.cookie = "nadebee-role=; path=/; max-age=0"; // <--- TAMBAHAN WAJIB
     
-    // 2. Putus sesi resmi dari Supabase
+    // 2. Bersihkan sisa memori form dan kurir di browser
+    sessionStorage.clear(); // <--- TAMBAHAN WAJIB BIAR BERSIH TOTAL
+    
+    // 3. Putus sesi resmi dari Supabase
     await supabase.auth.signOut();
     
-    // 3. Tendang kembali ke halaman utama
+    // 4. Tendang kembali ke halaman utama
     router.push("/"); 
   };
 
