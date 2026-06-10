@@ -80,8 +80,12 @@ export default function UnifiedRegister() {
         newErrors.kode_kurir = "Harus persis 6 digit angka"; 
       }
 
+      // --- REVISI: VALIDASI PLAT NOMOR ---
+      const platRegex = /^[A-Z]{1,2}\s\d{1,4}\s[A-Z]{1,3}$/;
       if (!formData.plat_nomor) {
         newErrors.plat_nomor = "Plat nomor wajib diisi";
+      } else if (!platRegex.test(formData.plat_nomor.toUpperCase())) {
+        newErrors.plat_nomor = "Format: AB 1234 CD (Contoh)";
       }
     }
 
