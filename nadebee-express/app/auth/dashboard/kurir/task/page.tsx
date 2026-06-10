@@ -314,13 +314,36 @@ export default function TaskPage() {
 
         {showRejectConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
-            <div className="bg-white rounded-[32px] p-8 md:p-10 max-w-sm w-full text-center relative z-10 shadow-2xl">
-              <h2 className="text-lg font-bold text-gray-900 mb-6">Yakin untuk menolak <span className="font-black">{selectedTask.id}</span>?</h2>
-              <div className="flex gap-3">
-                <button onClick={() => setShowRejectConfirm(false)} className="flex-1 bg-white border border-gray-300 text-gray-500 font-bold py-3 rounded-xl">Batal</button>
-                <button onClick={handleConfirmTolak} className="flex-1 bg-[#4CAF50] text-white font-bold py-3 rounded-xl">Ya</button>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowRejectConfirm(false)}></div>
+            <div className="bg-white border border-gray-100 rounded-[32px] w-full max-w-sm p-8 relative z-10 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+              
+              {/* Ikon Tanda Tanya Oranye */}
+              <div className="w-20 h-20 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mb-6">
+                <HelpCircle size={40} />
               </div>
+              
+              {/* Teks Konfirmasi */}
+              <h3 className="text-xl font-black text-gray-900 mb-2">Tolak Tugas</h3>
+              <p className="text-sm text-gray-500 mb-8 leading-relaxed">
+                Apakah Anda yakin ingin menolak pesanan <span className="font-bold text-gray-800">{selectedTask.id}</span>?
+              </p>
+              
+              {/* Tombol Aksi */}
+              <div className="flex gap-3 w-full">
+                <button 
+                  onClick={() => setShowRejectConfirm(false)} 
+                  className="flex-1 bg-gray-100/80 text-gray-600 font-bold py-3.5 md:py-4 rounded-xl hover:bg-gray-200 transition-colors"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={handleConfirmTolak} 
+                  className="flex-1 bg-[#FF3B30] text-white font-bold py-3.5 md:py-4 rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-100"
+                >
+                  Ya, Tolak
+                </button>
+              </div>
+              
             </div>
           </div>
         )}
