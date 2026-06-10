@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import UnauthorizedPage from "@/app/unauthorized"; 
+import UnauthorizedPage from "@/app/unauthorized/page"; 
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Satpam Utama: Cek jejak login (cookie)
