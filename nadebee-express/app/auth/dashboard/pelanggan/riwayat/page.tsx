@@ -117,14 +117,18 @@ export default function RiwayatPickupPage() {
     setIsDeleting(true);
 
     try {
+      // Ubah dari .delete() menjadi .update({ status: 'Dibatalkan' })
       const { error } = await supabase
         .from('shipments')
-        .delete()
+        .update({ status: 'Dibatalkan' }) 
         .eq('resi_number', resiToDelete);
 
       if (error) throw error;
 
-      setDataRiwayatAwal(prev => prev.filter(item => item.id !== resiToDelete));
+      // Update state lokal: cari item tersebut dan ubah statusnya jadi 'dibatalkan'
+      setDataRiwayatAwal(prev => prev.map(item => 
+        item.id === resiToDelete ? { ...item, status: 'dibatalkan' } : item
+      ));
       
       setShowDeleteConfirm(false);
       setShowDeleteSuccess(true);
@@ -222,7 +226,10 @@ export default function RiwayatPickupPage() {
               <Trash2 size={32} />
             </div>
             <h2 className="text-xl font-black text-gray-900 mb-2">Batalkan Pesanan?</h2>
-            <p className="text-sm text-gray-500 mb-6">Yakin ingin membatalkan pesanan <span className="font-bold text-gray-800">{resiToDelete}</span>? Data pesanan ini akan dihapus permanen dari sistem.</p>
+           <p className="text-sm text-gray-500 mb-6">
+            Yakin ingin membatalkan pesanan <span className="font-bold text-gray-800">{resiToDelete}</span>? 
+            Pesanan ini akan berstatus Dibatalkan dan tidak dapat diproses kembali.
+          </p>
             <div className="flex gap-3">
               <button 
                 onClick={() => setShowDeleteConfirm(false)} 
