@@ -97,25 +97,40 @@ export default function TaskPage() {
     setCurrentPage(1);
   }, [activeTab]);
 
-  // --- REVISI: PENANGANAN PESANAN DIBATALKAN SAAT DETAIL TERBUKA ---
+  // --- REVISI BULLETPROOF: ANTI-GHOSTING ---
   useEffect(() => {
-    if (selectedTask) {
-      const isTaskStillExist = allTasks.find((task) => task.id === selectedTask.id);
-      
-      // KITA TAMBAHKAN PEMERIKSAAN STATUS DI DATABASE/ALLTASKS
-      // Jika tugas benar-benar tidak ada di database, artinya DIBATALKAN PELANGGAN
-      const taskInDb = allTasks.find((task) => task.id === selectedTask.id);
-      
-      // Logika: Munculkan alert HANYA JIKA task hilang 
-      // DAN kurir tidak sedang dalam proses menolak/menyelesaikan
-      if (!taskInDb && !showRejectSuccess && !showFinishedPopup) {
-        alert(`🚨 Mohon maaf, pesanan ${selectedTask.id} baru saja dibatalkan oleh pelanggan.`);
-        
-        setShowAcceptConfirm(false);
-        setShowRejectConfirm(false);
-        setSelectedTask(null);
+    const checkGhosting = async () => {
+      if (selectedTask) {
+        const taskInActiveList = allTasks.find((task) => task.id === selectedTask.id);
+
+        // Jika tugas hilang dari daftar aktif (allTasks) dan kurir tidak sedang menolak/menyelesaikan
+        if (!taskInActiveList && !showRejectSuccess && !showFinishedPopup) {
+          
+          // Jangan panik dulu, TANYA langsung ke database apa status aslinya detik ini!
+          const { data, error } = await supabase
+            .from("shipments")
+            .select("status")
+            .eq("resi_number", selectedTask.id)
+            .single();
+
+          if (!error && data) {
+            const dbStatus = data.status.toLowerCase().trim();
+            
+            // Alert HANYA akan muncul jika status di database BENAR-BENAR "dibatalkan"
+            if (dbStatus === "dibatalkan") {
+              alert(`🚨 Mohon maaf, pesanan ${selectedTask.id} baru saja dibatalkan oleh pelanggan.`);
+              setShowAcceptConfirm(false);
+              setShowRejectConfirm(false);
+              setShowUpdateConfirm(false);
+              setSelectedTask(null);
+            }
+            // Jika dbStatus adalah "selesai", sistem akan diam saja karena kurir sedang upload foto.
+          }
+        }
       }
-    }
+    };
+
+    checkGhosting();
   }, [allTasks, selectedTask, showRejectSuccess, showFinishedPopup]);
 
   const waitingTasks = allTasks.filter(t => t.status.toLowerCase().trim() === "menunggu kurir");
