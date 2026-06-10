@@ -81,7 +81,7 @@ export default function TaskPage() {
           receiverName: d.receiver_name,
           receiverPhone: d.receiver_phone || "-",
           weight: d.weight_range || "-",
-          payment: d.payment_method || "Tunai", // <--- SEKARANG DINAMIS: Mengambil dari database!
+          payment: d.payment_method || "Tunai", 
           notes: d.note || "Tidak ada catatan" 
         }));
         setAllTasks(formattedData);
@@ -103,10 +103,7 @@ export default function TaskPage() {
       if (selectedTask) {
         const taskInActiveList = allTasks.find((task) => task.id === selectedTask.id);
 
-        // Jika tugas hilang dari daftar aktif (allTasks) dan kurir tidak sedang menolak/menyelesaikan
         if (!taskInActiveList && !showRejectSuccess && !showFinishedPopup) {
-          
-          // Jangan panik dulu, TANYA langsung ke database apa status aslinya detik ini!
           const { data, error } = await supabase
             .from("shipments")
             .select("status")
@@ -116,7 +113,6 @@ export default function TaskPage() {
           if (!error && data) {
             const dbStatus = data.status.toLowerCase().trim();
             
-            // Alert HANYA akan muncul jika status di database BENAR-BENAR "dibatalkan"
             if (dbStatus === "dibatalkan") {
               alert(`🚨 Mohon maaf, pesanan ${selectedTask.id} baru saja dibatalkan oleh pelanggan.`);
               setShowAcceptConfirm(false);
@@ -124,7 +120,6 @@ export default function TaskPage() {
               setShowUpdateConfirm(false);
               setSelectedTask(null);
             }
-            // Jika dbStatus adalah "selesai", sistem akan diam saja karena kurir sedang upload foto.
           }
         }
       }
@@ -154,7 +149,7 @@ export default function TaskPage() {
   const getStatusStyle = (rawStatus: string) => {
     const status = (rawStatus || "").toLowerCase().trim();
     switch (status) {
-      case "menunggu kurir": return "bg-orange-50 text-orange-500 border-orange-200"; // <-- Tambahkan baris ini!
+      case "menunggu kurir": return "bg-orange-50 text-orange-500 border-orange-200"; 
       case "kurir menuju lokasi": return "bg-orange-50 text-orange-500 border-orange-200";
       case "paket sudah diambil": return "bg-blue-50 text-blue-500 border-blue-200"; 
       case "dalam perjalanan": return "bg-purple-50 text-purple-500 border-purple-200"; 
@@ -182,7 +177,6 @@ export default function TaskPage() {
 
       await supabase.from('shipment_details').insert([{ shipment_id: selectedTask.uuid, status: newStatus }]);
       
-      // Optimistic UI Update
       setAllTasks(prevTasks => prevTasks.map(task => task.id === selectedTask.id ? { ...task, status: newStatus } : task));
       
       setShowSuccessPopup(true);
@@ -208,7 +202,6 @@ export default function TaskPage() {
         throw new Error("Update diblokir oleh keamanan database (RLS)!");
       }
 
-      // Optimistic UI Update (menghilangkan dari daftar aktif)
       setAllTasks(prevTasks => prevTasks.filter(task => task.id !== selectedTask.id));
 
       setShowRejectSuccess(true);
@@ -234,7 +227,6 @@ export default function TaskPage() {
 
       setCurrentStatus(newStatus);
       
-      // Optimistic UI Update
       setAllTasks(prevTasks => prevTasks.map(task => task.id === selectedTask.id ? { ...task, status: newStatus } : task));
 
       await supabase.from('shipment_details').insert([{ shipment_id: selectedTask.uuid, status: newStatus }]);
@@ -291,7 +283,6 @@ export default function TaskPage() {
 
       await supabase.from('shipment_details').insert([{ shipment_id: selectedTask.uuid, status: 'Selesai' }]);
       
-      // Optimistic UI Update (hilangkan dari daftar aktif karena sudah selesai)
       setAllTasks(prevTasks => prevTasks.filter(task => task.id !== selectedTask.id));
 
       setShowFinishedPopup(true);
@@ -333,39 +324,21 @@ export default function TaskPage() {
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowRejectConfirm(false)}></div>
             <div className="bg-white border border-gray-100 rounded-[32px] w-full max-w-sm p-8 relative z-10 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
-              
-              {/* Ikon Tanda Tanya Oranye */}
               <div className="w-20 h-20 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mb-6">
                 <HelpCircle size={40} />
               </div>
-              
-              {/* Teks Konfirmasi */}
               <h3 className="text-xl font-black text-gray-900 mb-2">Tolak Tugas</h3>
               <p className="text-sm text-gray-500 mb-8 leading-relaxed">
                 Apakah Anda yakin ingin menolak pesanan <span className="font-bold text-gray-800">{selectedTask.id}</span>?
               </p>
-              
-              {/* Tombol Aksi */}
               <div className="flex gap-3 w-full">
-                <button 
-                  onClick={() => setShowRejectConfirm(false)} 
-                  className="flex-1 bg-gray-100/80 text-gray-600 font-bold py-3.5 md:py-4 rounded-xl hover:bg-gray-200 transition-colors"
-                >
-                  Batal
-                </button>
-                <button 
-                  onClick={handleConfirmTolak} 
-                  className="flex-1 bg-[#FF3B30] text-white font-bold py-3.5 md:py-4 rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-100"
-                >
-                  Ya, Tolak
-                </button>
+                <button onClick={() => setShowRejectConfirm(false)} className="flex-1 bg-gray-100/80 text-gray-600 font-bold py-3.5 md:py-4 rounded-xl hover:bg-gray-200 transition-colors">Batal</button>
+                <button onClick={handleConfirmTolak} className="flex-1 bg-[#FF3B30] text-white font-bold py-3.5 md:py-4 rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-100">Ya, Tolak</button>
               </div>
-              
             </div>
           </div>
         )}
 
-        {/* --- POP-UP KONFIRMASI UPDATE STATUS --- */}
         {showUpdateConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setShowUpdateConfirm(false)}></div>
@@ -378,21 +351,8 @@ export default function TaskPage() {
                 Yakin ingin mengubah status pickup menjadi <span className="font-bold text-gray-800">"{pendingStatus}"</span>?
               </p>
               <div className="flex gap-3">
-                <button 
-                  onClick={() => setShowUpdateConfirm(false)} 
-                  className="flex-1 bg-white border border-gray-300 text-gray-600 font-bold py-3 rounded-xl hover:bg-gray-50"
-                >
-                  Batal
-                </button>
-                <button 
-                  onClick={() => {
-                    setShowUpdateConfirm(false);
-                    updateStatusToDB(pendingStatus);
-                  }} 
-                  className="flex-1 bg-blue-500 text-white font-bold py-3 rounded-xl hover:bg-blue-600"
-                >
-                  Ya, Ubah
-                </button>
+                <button onClick={() => setShowUpdateConfirm(false)} className="flex-1 bg-white border border-gray-300 text-gray-600 font-bold py-3 rounded-xl hover:bg-gray-50">Batal</button>
+                <button onClick={() => { setShowUpdateConfirm(false); updateStatusToDB(pendingStatus); }} className="flex-1 bg-blue-500 text-white font-bold py-3 rounded-xl hover:bg-blue-600">Ya, Ubah</button>
               </div>
             </div>
           </div>
@@ -428,7 +388,7 @@ export default function TaskPage() {
           </div>
         )}
 
-        <button onClick={() => {setSelectedTask(null); setSelectedFile(null);}} className="flex items-center gap-2 text-gray-500 hover:text-green-600 font-medium mt-4 font-medium italic">
+        <button onClick={() => {setSelectedTask(null); setSelectedFile(null);}} className="flex items-center gap-2 text-gray-500 hover:text-green-600 font-medium mt-4 italic">
           <ArrowLeft size={20} /> Kembali
         </button>
 
@@ -475,35 +435,54 @@ export default function TaskPage() {
             <button onClick={() => setShowAcceptConfirm(true)} className="flex-1 bg-[#4CAF50] text-white font-bold py-4 rounded-full shadow-lg hover:bg-green-600 order-1 md:order-2">Ambil Tugas</button>
           </div>
         ) : (
+          /* --- KODE BARU WORKFLOW LINEAR & UPLOAD ATOMIK DI SINI --- */
           <div className="space-y-6">
             <div className="bg-white border border-green-500 rounded-[24px] p-6 md:p-8 shadow-sm space-y-4">
-              <p className="font-bold text-gray-900">Update Status</p>
+              <p className="font-bold text-gray-900">Update Pengiriman</p>
               
+              {/* --- TOMBOL 1: PAKET SUDAH DIAMBIL --- */}
               <button 
+                type="button"
+                disabled={currentStatus.toLowerCase().trim() !== "kurir menuju lokasi"}
                 onClick={() => { setPendingStatus("Paket Sudah Diambil"); setShowUpdateConfirm(true); }} 
-                className={`w-full text-left p-4 rounded-xl font-bold border transition-colors ${currentStatus.toLowerCase().trim() === "paket sudah diambil" ? "bg-blue-100 border-blue-400 text-blue-600" : "bg-blue-50/50 border-blue-100 text-blue-400 hover:bg-blue-100"}`}
+                className={`w-full text-left p-4 rounded-xl font-bold border transition-colors ${
+                  currentStatus.toLowerCase().trim() === "paket sudah diambil" || currentStatus.toLowerCase().trim() === "dalam perjalanan"
+                    ? "bg-blue-100 border-blue-400 text-blue-600 opacity-80" 
+                    : currentStatus.toLowerCase().trim() === "kurir menuju lokasi"
+                    ? "bg-blue-50/50 border-blue-100 text-blue-400 hover:bg-blue-100"
+                    : "bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed"
+                }`}
               >
-                Paket Sudah Diambil
+                <div className="flex items-center justify-between">
+                  <span>Paket Sudah Diambil</span>
+                  {(currentStatus.toLowerCase().trim() === "paket sudah diambil" || currentStatus.toLowerCase().trim() === "dalam perjalanan") && <Check size={18} />}
+                </div>
               </button>
               
+              {/* --- TOMBOL 2: DALAM PERJALANAN --- */}
               <button 
+                type="button"
+                disabled={currentStatus.toLowerCase().trim() !== "paket sudah diambil"}
                 onClick={() => { setPendingStatus("Dalam Perjalanan"); setShowUpdateConfirm(true); }} 
-                className={`w-full text-left p-4 rounded-xl font-bold border transition-colors ${currentStatus.toLowerCase().trim() === "dalam perjalanan" ? "bg-purple-100 border-purple-400 text-purple-600" : "bg-purple-50/50 border-purple-100 text-purple-400 hover:bg-purple-100"}`}
+                className={`w-full text-left p-4 rounded-xl font-bold border transition-colors ${
+                  currentStatus.toLowerCase().trim() === "dalam perjalanan"
+                    ? "bg-purple-100 border-purple-400 text-purple-600 opacity-80" 
+                    : currentStatus.toLowerCase().trim() === "paket sudah diambil"
+                    ? "bg-purple-50/50 border-purple-100 text-purple-400 hover:bg-purple-100"
+                    : "bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed"
+                }`}
               >
-                Dalam Perjalanan
-              </button>
-              
-              <button 
-                onClick={() => { setPendingStatus("Selesai"); setShowUpdateConfirm(true); }} 
-                className={`w-full text-left p-4 rounded-xl font-bold border transition-colors ${currentStatus.toLowerCase().trim() === "selesai" ? "bg-green-100 border-green-400 text-green-600" : "bg-green-50/50 border-green-100 text-green-400 hover:bg-green-100"}`}
-              >
-                Selesai
+                <div className="flex items-center justify-between">
+                  <span>Dalam Perjalanan</span>
+                  {currentStatus.toLowerCase().trim() === "dalam perjalanan" && <Check size={18} />}
+                </div>
               </button>
             </div>
             
-            {currentStatus.toLowerCase().trim() === "selesai" && (
-              <div className="bg-white border border-green-500 rounded-[24px] p-6 md:p-8 shadow-sm space-y-4">
-                <p className="font-bold text-gray-900">Foto Bukti Selesai</p>
+            {/* --- LANGKAH 3: FORM UPLOAD BUKTI (Hanya muncul saat status 'Dalam Perjalanan') --- */}
+            {currentStatus.toLowerCase().trim() === "dalam perjalanan" && (
+              <div className="bg-white border border-green-500 rounded-[24px] p-6 md:p-8 shadow-sm space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <p className="font-bold text-gray-900">Selesai</p>
                 <label>
                   <div className={`border-2 border-dashed rounded-2xl p-6 md:p-10 flex flex-col items-center justify-center cursor-pointer ${fileError ? "border-red-400 bg-red-50/30" : "border-gray-300 hover:bg-gray-50"}`}>
                     <input type="file" className="hidden" accept="image/png, image/jpeg" onChange={handleFileChange} />
@@ -512,7 +491,14 @@ export default function TaskPage() {
                   </div>
                 </label>
                 {fileError && <p className="text-red-500 text-[11px] italic font-medium">Foto harus dalam bentuk .png/.jpg</p>}
-                <button disabled={!selectedFile || fileError || isUploading} onClick={handleFinishTask} className={`w-full font-bold py-4 rounded-full flex items-center justify-center gap-2 ${(!selectedFile || fileError || isUploading) ? "bg-gray-300 cursor-not-allowed text-gray-100" : "bg-[#4CAF50] text-white hover:bg-green-600 shadow-lg"}`}>{isUploading ? "Mengunggahan Bukti..." : "Kirim Bukti & Selesaikan Misi"}</button>
+                
+                <button 
+                  disabled={!selectedFile || fileError || isUploading} 
+                  onClick={handleFinishTask} 
+                  className={`w-full font-bold py-4 rounded-full flex items-center justify-center gap-2 ${(!selectedFile || fileError || isUploading) ? "bg-gray-300 cursor-not-allowed text-gray-100" : "bg-[#4CAF50] text-white hover:bg-green-600 shadow-lg"}`}
+                >
+                  {isUploading ? "Mengunggah Bukti..." : "Kirim Bukti & Selesaikan Misi"}
+                </button>
               </div>
             )}
           </div>
@@ -537,7 +523,6 @@ export default function TaskPage() {
         </button>
       </div>
 
-      {/* --- KUNCI PAGINATION DIAM: flex-col & justify-between & min-h --- */}
       <div className="flex flex-col justify-between min-h-[480px]">
         <div className="space-y-4">
           {loadingTasks ? (
@@ -566,7 +551,6 @@ export default function TaskPage() {
                     </div>
                   </div>
                   
-                  {/* --- ICON LUCIDE PENGGANTI EMOJI --- */}
                   <div className="space-y-3 text-sm text-gray-500 font-medium">
                     <div className="flex items-center gap-2.5">
                       <Package size={16} className="text-gray-400 shrink-0" />
@@ -577,8 +561,6 @@ export default function TaskPage() {
                       <p className="leading-snug">{task.pickup}</p>
                     </div>
                   </div>
-                  {/* ----------------------------------- */}
-
                 </div>
               ))}
 
@@ -591,7 +573,6 @@ export default function TaskPage() {
           )}
         </div>
 
-        {/* --- TOMBOL PAGINATION --- */}
         {!loadingTasks && dataTabSesuai.length > 0 && (
           <div className="flex items-center justify-center gap-1 mt-10">
             <button
@@ -634,7 +615,6 @@ export default function TaskPage() {
           </div>
         )}
       </div>
-
     </div>
   );
 }
