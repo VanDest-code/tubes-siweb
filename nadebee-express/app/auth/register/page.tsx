@@ -120,13 +120,24 @@ export default function UnifiedRegister() {
               plat_nomor: formData.plat_nomor,
               rating: 5.0 
             }]);
-          if (error) throw error;
+          
+          // --- INI BAGIAN PENTING UNTUK MENGUBAH ERROR TEKNIS ---
+          if (error) {
+            if (error.code === '23505') {
+              throw new Error("User already registered.");
+            }
+            throw error;
+          }
         }
         
         alert(`Pendaftaran ${activeTab === 'pelanggan' ? 'Akun' : 'Mitra'} Berhasil! Silakan masuk.`);
         router.push("/auth/login"); 
       } catch (error: any) {
-        setRegisterError(error.message || "Terjadi kesalahan saat mendaftar.");
+        // Jika errornya berasal dari auth Supabase, kita juga tangkap
+        const msg = error.message === "User already registered" 
+          ? "Email ini sudah terdaftar sebagai pelanggan." 
+          : error.message;
+        setRegisterError(msg || "Terjadi kesalahan saat mendaftar.");
       } finally {
         setLoading(false);
       }
