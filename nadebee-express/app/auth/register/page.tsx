@@ -85,7 +85,7 @@ export default function UnifiedRegister() {
       if (!formData.plat_nomor) {
         newErrors.plat_nomor = "Plat nomor wajib diisi";
       } else if (!platRegex.test(formData.plat_nomor.toUpperCase())) {
-        newErrors.plat_nomor = "Format: AB 1234 CD (Contoh)";
+        newErrors.plat_nomor = "No plat salah! cth: AB 1234 CD";
       }
     }
 
