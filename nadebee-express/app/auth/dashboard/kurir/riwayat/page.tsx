@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Filter, Star, MapPin, Clock, Calendar, XCircle, AlertCircle } from "lucide-react"; // <-- TAMBAHAN: AlertCircle
+import { Search, Filter, Star, MapPin, Clock, Calendar, XCircle, AlertCircle, Package } from "lucide-react"; // <-- TAMBAHAN: AlertCircle
 import { supabase } from "@/lib/supabase";
 
 export default function RiwayatPage() {
@@ -217,9 +217,10 @@ export default function RiwayatPage() {
                           <MapPin size={16} className="text-gray-300 mt-0.5 shrink-0" />
                           <span className="leading-snug pr-4">{item.route}</span>
                         </div>
+                        {/* SEKARANG: Menampilkan Jenis Barang */}
                         <div className="flex items-center gap-3">
-                          <Clock size={16} className="text-gray-300 shrink-0" />
-                          <span>Durasi: {item.duration}</span>
+                          <Package size={16} className="text-gray-300 shrink-0" />
+                          <span>{item.itemCategory}</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <Calendar size={16} className="text-gray-300 shrink-0" />

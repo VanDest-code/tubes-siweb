@@ -19,7 +19,9 @@ export default function UnifiedLogin() {
   const [errors, setErrors] = useState<{email?: string; password?: string; code?: string; auth?: string}>({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
-
+  
+  const [realName, setRealName] = useState(""); // <-- Tambahkan ini
+  
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -58,32 +60,35 @@ export default function UnifiedLogin() {
 
     // Eksekusi Supabase Berdasarkan Role
     try {
-  if (activeTab === 'pelanggan') {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw new Error("Email atau Password salah!");
-    
-    sessionStorage.removeItem("loggedInCourierId"); 
-    document.cookie = "nadebee-auth-token=true; path=/; max-age=86400";
-  } else {
-    // === TAMBAHKAN BARIS INI UNTUK KURIR ===
-    // Bersihkan dulu session Supabase Auth pelanggan agar tidak merusak Sidebar Kurir!
-    await supabase.auth.signOut(); 
-    // =======================================
+      if (activeTab === 'pelanggan') {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw new Error("Email atau Password salah!");
+        
+        // Simpan nama asli pelanggan
+        setRealName(data.user?.user_metadata?.username || ""); 
+        
+        sessionStorage.removeItem("loggedInCourierId"); 
+        document.cookie = "nadebee-auth-token=true; path=/; max-age=86400";
+      } else {
+        await supabase.auth.signOut(); 
 
-    const { data, error } = await supabase
-      .from("couriers")
-      .select("id")
-      .eq("email", email)
-      .eq("kode_kurir", kurirCode)
-      .single();
+        const { data, error } = await supabase
+          .from("couriers")
+          .select("id, username") // <-- Tambahkan 'username' di select ini
+          .eq("email", email)
+          .eq("kode_kurir", kurirCode)
+          .single();
 
-    if (error || !data) throw new Error("Email atau Kode Kurir salah!");
-    
-    sessionStorage.setItem("loggedInCourierId", data.id);
-    document.cookie = "nadebee-auth-token=true; path=/; max-age=86400";
-  }
+        if (error || !data) throw new Error("Email atau Kode Kurir salah!");
+        
+        // Simpan nama asli kurir
+        setRealName(data.username); 
+        
+        sessionStorage.setItem("loggedInCourierId", data.id);
+        document.cookie = "nadebee-auth-token=true; path=/; max-age=86400";
+      }
 
-  setShowSuccess(true);
+      setShowSuccess(true);
 } catch (err: any) {
   setErrors({ auth: err.message || "Terjadi kesalahan sistem." });
 } finally {
@@ -209,7 +214,7 @@ export default function UnifiedLogin() {
             </div>
             <h3 className="font-black text-gray-900 text-base md:text-lg mb-1">Login Berhasil!</h3>
             <p className="text-gray-500 text-xs md:text-sm mb-6 text-center font-medium">
-              Selamat datang <span className="font-bold text-gray-800">{displayName}</span>{activeTab === 'kurir' ? ' dan selamat bekerja!' : ''}
+              Selamat datang <span className="font-bold text-gray-800">{realName || displayName}</span>{activeTab === 'kurir' ? ' dan selamat bekerja!' : ''}
             </p>
             <Link 
               href={activeTab === 'pelanggan' ? "/auth/dashboard/pelanggan" : "/auth/dashboard/kurir"} 

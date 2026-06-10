@@ -288,9 +288,12 @@ function TrackingContent() {
                 </div>
               </div>
             </div>
-            <div className="bg-[#D7ECD9] p-5 rounded-[22px] text-center border border-white">
-              <p className="text-[14px] font-bold text-green-800/60">Tenang, paketmu sedang dalam proses</p>
-            </div>
+            {/* Tambahkan tanda ? setelah currentData dan status */}
+            {currentData?.status?.toLowerCase() !== "selesai" && (
+              <div className="bg-[#D7ECD9] p-5 rounded-[22px] text-center border border-white">
+                <p className="text-[14px] font-bold text-green-800/60">Tenang, paketmu sedang dalam proses</p>
+              </div>
+            )}
           </div>
         )}
 

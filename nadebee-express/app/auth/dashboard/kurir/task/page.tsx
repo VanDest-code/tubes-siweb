@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MapPin, ArrowRight, ArrowLeft, Phone, Upload, HelpCircle, XCircle, CheckCircle2 } from "lucide-react";
+import { MapPin, ArrowRight, ArrowLeft, Phone, Upload, HelpCircle, XCircle, CheckCircle2, Package, Truck, User, Check, Clock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export default function TaskPage() {
@@ -137,6 +137,7 @@ export default function TaskPage() {
   const getStatusStyle = (rawStatus: string) => {
     const status = (rawStatus || "").toLowerCase().trim();
     switch (status) {
+      case "menunggu kurir": return "bg-orange-50 text-orange-500 border-orange-200"; // <-- Tambahkan baris ini!
       case "kurir menuju lokasi": return "bg-orange-50 text-orange-500 border-orange-200";
       case "paket sudah diambil": return "bg-blue-50 text-blue-500 border-blue-200"; 
       case "dalam perjalanan": return "bg-purple-50 text-purple-500 border-purple-200"; 
@@ -387,7 +388,7 @@ export default function TaskPage() {
           </div>
         )}
 
-        <button onClick={() => {setSelectedTask(null); setSelectedFile(null);}} className="flex items-center gap-2 text-gray-500 hover:text-green-600 font-medium mt-4">
+        <button onClick={() => {setSelectedTask(null); setSelectedFile(null);}} className="flex items-center gap-2 text-gray-500 hover:text-green-600 font-medium mt-4 font-medium italic">
           <ArrowLeft size={20} /> Kembali
         </button>
 
@@ -524,10 +525,20 @@ export default function TaskPage() {
                       <ArrowRight size={24} className="group-hover:translate-x-2 transition-all" />
                     </div>
                   </div>
+                  
+                  {/* --- ICON LUCIDE PENGGANTI EMOJI --- */}
                   <div className="space-y-3 text-sm text-gray-500 font-medium">
-                    <p>📦 {task.name} | Berat {task.weight}</p>
-                    <p>📍 {task.pickup}</p>
+                    <div className="flex items-center gap-2.5">
+                      <Package size={16} className="text-gray-400 shrink-0" />
+                      <p>{task.name} <span className="mx-1 text-gray-300">|</span> Berat {task.weight}</p>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <MapPin size={16} className="text-gray-400 shrink-0 mt-0.5" />
+                      <p className="leading-snug">{task.pickup}</p>
+                    </div>
                   </div>
+                  {/* ----------------------------------- */}
+
                 </div>
               ))}
 

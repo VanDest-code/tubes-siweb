@@ -205,20 +205,32 @@ function DetailPengirimanContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-2 md:gap-x-4 gap-y-4 md:gap-y-6 text-[13px] md:text-[15px]">
-              <div>
+            {/* Ubah grid-cols-2 menjadi grid-cols-2 lg:grid-cols-3 agar muat lebih banyak */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-2 md:gap-x-4 gap-y-4 md:gap-y-6 text-[13px] md:text-[15px]">
+              <div className="col-span-1">
                 <p className="text-gray-400 mb-1">Pengirim</p>
                 <p className="text-black font-black">{detailData.sender_name}</p>
               </div>
-              <div>
+              <div className="col-span-1">
                 <p className="text-gray-400 mb-1">Penerima</p>
                 <p className="text-black font-black">{detailData.receiver_name}</p>
               </div>
-              <div>
+              <div className="col-span-1 lg:col-span-1">
                 <p className="text-gray-400 mb-1">Wilayah</p>
                 <p className="text-black font-black">{detailData.destination_city || "Sleman"}</p>
               </div>
-              <div>
+              
+              {/* --- TAMBAHAN JENIS BARANG & BERAT --- */}
+              <div className="col-span-1">
+                <p className="text-gray-400 mb-1">Jenis Barang</p>
+                <p className="text-black font-black">{detailData.item_category || "Paket"}</p>
+              </div>
+              <div className="col-span-1">
+                <p className="text-gray-400 mb-1">Berat</p>
+                <p className="text-black font-black">{detailData.weight_range || "-"}</p>
+              </div>
+              
+              <div className="col-span-2 lg:col-span-1 border-t lg:border-t-0 pt-3 lg:pt-0 border-gray-100">
                 <p className="text-gray-400 mb-1">Ongkir</p>
                 <p className="text-[#4CAF50] font-black">Rp {detailData.shipping_cost?.toLocaleString('id-ID') || "20.000"}</p>
               </div>

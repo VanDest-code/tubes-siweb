@@ -47,14 +47,12 @@ export default function NontunaiPage() {
     }
 
     try {
-      // MENGGUNAKAN GETSESSION AGAR LEBIH STABIL DI CLIENT SIDE
+      // --- PERBAIKAN: Gunakan getSession agar stabil ---
       const { data: { session } } = await supabase.auth.getSession();
       const userEmail = session?.user?.email;
-      const userId = session?.user?.id;
 
-      // Cegah pengiriman jika email benar-benar hilang dari browser
       if (!userEmail) {
-        alert("Sesi login terputus. Silakan logout dan login kembali.");
+        alert("Sesi login terputus atau email tidak terbaca. Silakan refresh halaman atau login ulang.");
         setIsLoading(false);
         return;
       }
@@ -63,9 +61,8 @@ export default function NontunaiPage() {
         ...JSON.parse(savedData),
         shippingCost: parseInt(savedCost || "20000"),
         courier_id: savedCourierId,
-        payment_method: savedPayment || "Tunai", // Sesuaikan dengan halaman (Tunai / Non Tunai)
-        customer_email: userEmail,
-        user_id: userId
+        payment_method: savedPayment || "Tunai", 
+        customer_email: userEmail // <-- Pastikan email ini terisi
       };
 
       const response = await fetch("/api/pickup", {
@@ -80,11 +77,11 @@ export default function NontunaiPage() {
         sessionStorage.clear(); 
         router.push(`/auth/dashboard/pelanggan/request-pickup/berhasil?resi=${result.resi}`);
       } else {
-        const errorMessage = result.error || result.message || "Terjadi kesalahan pada sistem database.";
+        const errorMessage = result.error || result.message || "Terjadi kesalahan sistem.";
         alert(`Gagal: ${errorMessage}`);
       }
     } catch (error) {
-      alert("Gagal menghubungi server. Pastikan koneksi internet aman.");
+      alert("Gagal menghubungi server.");
     } finally {
       setIsLoading(false);
     }

@@ -82,7 +82,7 @@ export default function RiwayatPickupPage() {
             rute: `${d.sender_name} → ${d.receiver_name}`,
             detail: `${d.destination_city} | ${d.item_category} | ${d.weight_range}`,
             tanggal: d.created_at.split("T")[0],
-            tanggal_raw: d.created_at // <-- Simpan format asli untuk UI
+            tanggal_raw: d.created_at // Simpan format asli untuk UI & Filter
           }));
           setDataRiwayatAwal(formattedData);
         }
@@ -94,9 +94,12 @@ export default function RiwayatPickupPage() {
     }
   };
 
+  // Agar langsung refresh jika tab atau filter tanggal diklik
   useEffect(() => {
     fetchRiwayat();
+  }, [activeTab, selectedDate]);
 
+  useEffect(() => {
     const channel = supabase
       .channel('live-update-riwayat')
       .on(
@@ -129,7 +132,7 @@ export default function RiwayatPickupPage() {
 
     } catch (error: any) {
       console.error("Gagal membatalkan pesanan:", error);
-      alert(`Gagal! Pastikan gembok (RLS) untuk DELETE di Supabase sudah dimatikan. Error: ${error.message}`);
+      alert(`Gagal membatalkan pesanan. Error: ${error.message}`);
     } finally {
       setIsDeleting(false);
     }
@@ -167,6 +170,7 @@ export default function RiwayatPickupPage() {
     return s === "selesai" || s === "ditolak" || s === "dibatalkan";
   }).length;
 
+  // --- LOGIKA FILTER (Sudah dibersihkan dari duplikat/dobel) ---
   const dataTerfilter = dataRiwayatAwal.filter((item) => {
     const dbStatus = (item.status || "").toLowerCase().trim();
     
@@ -180,11 +184,19 @@ export default function RiwayatPickupPage() {
       item.rute.toLowerCase().includes(query) || 
       item.detail.toLowerCase().includes(query); 
                         
-    const matchDate = selectedDate ? item.tanggal === selectedDate : true;
+    // --- FILTER TANGGAL ZONA WAKTU LOKAL (WIB) ---
+    const matchDate = selectedDate ? (() => {
+      const dbDate = new Date(item.tanggal_raw); 
+      const localYear = dbDate.getFullYear();
+      const localMonth = String(dbDate.getMonth() + 1).padStart(2, '0');
+      const localDay = String(dbDate.getDate()).padStart(2, '0');
+      const formattedLocal = `${localYear}-${localMonth}-${localDay}`;
+      return formattedLocal === selectedDate;
+    })() : true;
     
     return matchTab && matchQuery && matchDate;
   });
-
+  
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const dataPerHalaman = dataTerfilter.slice(indexOfFirstItem, indexOfLastItem); 
@@ -404,7 +416,6 @@ export default function RiwayatPickupPage() {
                     onClick={() => router.push(`/auth/dashboard/pelanggan/riwayat/detail-pengiriman?resi=${item.id}`)}
                   >
                     
-                    {/* --- PILL TANGGAL DI POJOK KANAN ATAS --- */}
                     <div className="absolute top-6 right-6 md:top-8 md:right-8">
                       <span className="text-[10px] md:text-[11px] font-bold text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
                         {formatTanggalCard(item.tanggal_raw)}
