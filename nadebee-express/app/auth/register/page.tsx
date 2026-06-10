@@ -121,28 +121,31 @@ export default function UnifiedRegister() {
               rating: 5.0 
             }]);
           
-          // --- INI BAGIAN PENTING UNTUK MENGUBAH ERROR TEKNIS ---
-          if (error) {
-            if (error.code === '23505') {
-              throw new Error("User already registered.");
-            }
-            throw error;
-          }
+          if (error) throw error; // Biarkan error ditangkap oleh blok catch di bawah
         }
         
         alert(`Pendaftaran ${activeTab === 'pelanggan' ? 'Akun' : 'Mitra'} Berhasil! Silakan masuk.`);
         router.push("/auth/login"); 
+
       } catch (error: any) {
-        // Jika errornya berasal dari auth Supabase, kita juga tangkap
-        const msg = error.message === "User already registered" 
-          ? "Email ini sudah terdaftar sebagai pelanggan." 
-          : error.message;
-        setRegisterError(msg || "Terjadi kesalahan saat mendaftar.");
+        // Log error ke console supaya kita bisa lihat struktur aslinya
+        console.log("Full Error Object:", error);
+
+        // Pesan error ramah
+        let friendlyMessage = "Terjadi kesalahan saat mendaftar.";
+
+        // Cek kode error Supabase (23505 adalah duplicate key)
+        if (error.code === '23505' || error.message?.includes('unique constraint')) {
+          friendlyMessage = "Email ini sudah terdaftar. Silakan gunakan email lain.";
+        } else if (error.message === "User already registered") {
+          friendlyMessage = "Email ini sudah terdaftar sebagai Pelanggan.";
+        }
+
+        setRegisterError(friendlyMessage);
       } finally {
         setLoading(false);
       }
-    } 
-  };
+  } };
 
   return (
     <main className="min-h-screen bg-[#F4F9F4] flex flex-col items-center relative font-poppins pb-16 w-full overflow-x-hidden">
